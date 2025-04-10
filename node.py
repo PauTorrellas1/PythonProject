@@ -10,7 +10,7 @@ def AddNeighbor (n1,n2):
     b=True
     i=0
     while i<len(n1.neighbors) and b:
-        if n1.neighbors.name[i]==n2.name:
+        if n1.neighbors[i].name==n2.name:
             b=False
         else:
             n1.neighbors.append(n2)
