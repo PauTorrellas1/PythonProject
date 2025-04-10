@@ -6,25 +6,24 @@ class Graph:
         self.segments=[]
 
 def AddNode(g,n):
-    b = True
-    i = 0
-    while i < len(g.nodes) and b:
-        if g.nodes.name[i] == n.name:
-            b = False
-        elif b:
-            g.nodes.append(n)
-            b=False
-        i+=1
+    if n in g.nodes:
+        b=False
+    elif n not in g.nodes:
+        g.nodes.append(n)
+        b=True
+    else:
+        print("ERROR(AddNode)")
+        b=False
     return b
 def AddSegment (g, Vector:str, nOrigin, nDestination):
     Origin=Destination=g.nodes[0]
     a=c=False
     j=0
     while j<len(g.nodes) and not c and not a:
-        if nOrigin==g.nodes.name[j]:
+        if nOrigin==g.nodes[j].name:
             Origin=g.nodes[j]
             c=True
-        if nDestination==g.nodes.name[j]!=nOrigin:
+        if nDestination==g.nodes[j].name!=nOrigin:
             Destination=g.nodes[j]
             a=True
         j+=1
@@ -46,16 +45,16 @@ def GetClosest (g, x:float,y:float):
     return Closestn
 def Plot(g):
     X=Y=[]
-    i=0
+    i=1
     while g.nodes!=[]:
-        X.append(g.nodes.x[i])
-        Y.append(g.nodes.y[i])
-        p.text(g.nodes.x[i],g.nodes.y[i], g.nodes.name[i])
+        X.append(g.nodes[i].x)
+        Y.append(g.nodes[i].y)
+        p.text(g.nodes[i].x,g.nodes[i].y, g.nodes[i].name)
         i+=1
     o=0
     while o<len(g.segments):
-        p.plot([g.segments.na.x[o],g.segments.nb.x[o]],[g.segments.na.y[o],g.segments.nb.y[o]])
-        p.text((g.segments.na.x[o]+g.segments.nb.x[o])/2,(g.segments.na.y[o]+g.segments.nb.y[o])/2, g.segment.cost[o])
+        p.plot([g.segments[o].na.x,g.segments[o].nb.x],[g.segments[o].na.y,g.segments[o].nb.y])
+        p.text((g.segments[o].na.x+g.segments[o].nb.x)/2,(g.segments.na.y[o]+g.segments[o].nb.y)/2, g.segment[o].cost)
         o+=1
     p.scatter(X,Y,"r", marker="D")
     p.grid(color="g")
@@ -65,18 +64,18 @@ def Plot(g):
 def PlotNode (g, origin):
     o=0
     while o<len(g.nodes): #Es pot fer els grisos despres per més eficiència
-        p.scatter(g.nodes.x[o],g.nodes.y[o], color="858585")
+        p.scatter(g.nodes[o].x,g.nodes[o].y, color="858585")
         o+=1
     p.scatter(origin.x,origin.y,color='#0000FF')
     i=0
     while i<len(origin.neighbor):
-        p.scatter(origin.neighbor.x[i],origin.neighbor.y[i],color='#00FF00')
+        p.scatter(origin.neighbor[i].x,origin.neighbor[i].y,color='#00FF00')
         i+=1
     t=0
     while t<len(g.segments):
-        if g.segments.na.name[t]==origin and (g.segments.nb[t] in origin.neighbors):
-            p.plot([g.segments.na.x[t], g.segments.nb.x[t]], [g.segments.na.y[t], g.segments.nb.y[t]],color='FF0000')
-            p.text((g.segments.na.x[o] + g.segments.nb.x[o]) / 2, (g.segments.na.y[o] + g.segments.nb.y[o]) / 2, g.segment.cost[o])
+        if g.segments[t].na.name==origin and (g.segments[t].nb in origin.neighbors):
+            p.plot([g.segments.na[t].x, g.segments.nb[t].x], [g.segments[t].na.y, g.segments[t].nb.y],color='FF0000')
+            p.text((g.segments[o].na.x + g.segments[o].nb.x) / 2, (g.segments[o].na.y + g.segments[o].nb.y) / 2, g.segment.cost[o])
         t+=1
     if origin not in g.nodes:
         return False
