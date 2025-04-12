@@ -15,24 +15,33 @@ def AddNode(g,n):
         print("ERROR(AddNode)")
         b=False
     return b
+
+'''
+Esta función busca un nodo en el grafo y retorna el node si lo encuentra y None si no lo encuentra
+'''
+def SearchNode(g,name):
+    for n in g.nodes:
+        if n.name==name:
+            return n
+    return None
+def SearchNodeV2(g,name):
+    i=0
+    while i<len(g.nodes):
+        if g.nodes[i].name==name:
+            return g.nodes[i]
+        i+=1
+    return None
+
 def AddSegment (g, Vector:str, nOrigin, nDestination):
-    Origin=Destination=g.nodes[0]
-    a=c=False
-    j=0
-    while j<len(g.nodes) and not c and not a:
-        if nOrigin==g.nodes[j].name:
-            Origin=g.nodes[j]
-            c=True
-        if nDestination==g.nodes[j].name!=nOrigin:
-            Destination=g.nodes[j]
-            a=True
-        j+=1
-    if a and c:
+    Origin=SearchNode(g,nOrigin)
+    Destination=SearchNode(g,nDestination)
+    if Origin != None and Destination != None:
         g.segments.append(Segment(Vector,Origin,Destination))
         AddNeighbor(Origin, Destination)
-    elif not(a and c):
+        return True
+    else:
         print("node not valid")
-    return (a and c)
+        return False
 def GetClosest (g, x:float,y:float):
     i=0
     Dmin=0
@@ -45,18 +54,16 @@ def GetClosest (g, x:float,y:float):
     return Closestn
 def Plot(g):
     X=Y=[]
-    i=1
-    while g.nodes!=[]:
-        X.append(g.nodes[i].x)
-        Y.append(g.nodes[i].y)
-        p.text(g.nodes[i].x,g.nodes[i].y, g.nodes[i].name)
+    i=0
+    while i<len(g.nodes):
+        p.plot([g.nodes[i].x],[g.nodes[i].y],"r", marker="D")
+        p.text(g.nodes[i].x,g.nodes[i].y-0.05, g.nodes[i].name)#############################
         i+=1
     o=0
     while o<len(g.segments):
         p.plot([g.segments[o].na.x,g.segments[o].nb.x],[g.segments[o].na.y,g.segments[o].nb.y])
-        p.text((g.segments[o].na.x+g.segments[o].nb.x)/2,(g.segments.na.y[o]+g.segments[o].nb.y)/2, g.segment[o].cost)
+        p.text((g.segments[o].na.x+g.segments[o].nb.x)/2,(g.segments[o].na.y+g.segments[o].nb.y)/2, g.segments[o].cost)
         o+=1
-    p.scatter(X,Y,"r", marker="D")
     p.grid(color="g")
     p.xlabel("x")
     p.ylabel("y")
