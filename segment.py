@@ -1,4 +1,6 @@
 from node import *
+
+
 class Segment:
     def __init__(self,name:str, na:Node, nb:Node):
         self.name=name
