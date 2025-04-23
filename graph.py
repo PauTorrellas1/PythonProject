@@ -28,15 +28,19 @@ def SearchNode(g,name):
     Esta función busca un nodo en el grafo y retorna el node si lo encuentra y
     None si no lo encuentra
     '''
+    b=True
     for n in g.nodes:
+        print(n)
         if n.name == name:
+            b=False
             return n
-    return None
+    if b:
+        return None
 
 def AddSegment(g, Vector:str, nOrigin, nDestination):
     '''
-    Esta función añade un segmento al grafo si encuentra los nodos en la lista g.nodos
-    y retorna True o False en caso que no pueda
+    Esta función añade un segmento al grafo si encuentra los nodos en la lista g.nodes
+    y retorna True o False en caso de que no pueda
     '''
     Origin = SearchNode(g, nOrigin)
     Destination = SearchNode(g, nDestination)
@@ -109,3 +113,23 @@ def PlotNode (g, Norigin):
         return True
     else:
         return False
+
+def read_file(Nfile:str):
+    """
+    CSV file
+    Format:
+        Type of add (S=segment N=node), Name, Attribute1, Attribute 2
+    """
+    G = Graph()
+    F=open(Nfile,"r")
+    line=F.readline()
+    while line!="":
+        parts=line.strip().split(",")
+        if parts[0]=="N":
+            _, name, x, y = parts
+            AddNode(G, Node(name, eval(x), eval(y)))
+        if parts[0] == "S":
+            _, name, n1, n2 = parts
+            AddSegment(G, name, n1, n2)
+        line = F.readline()
+    return G

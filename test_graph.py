@@ -40,6 +40,7 @@ def CreateGraph_1 ():
     AddSegment(G, "LF","L","F")
     return G
 print ("Probando el grafo...")
+#G = read_file("GraphData.csv")
 G = CreateGraph_1()
 Plot(G)
 PlotNode(G, "C")
