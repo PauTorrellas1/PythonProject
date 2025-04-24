@@ -40,10 +40,12 @@ def CreateGraph_1 ():
     AddSegment(G, "LF","L","F")
     return G
 print ("Probando el grafo...")
-#G = read_file("GraphData.csv")
-G = CreateGraph_1()
-Plot(G)
-PlotNode(G, "C")
+G = read_file("GraphData.csv")
+def show_graph():
+    #G = read_file("GraphData.csv")
+    G = CreateGraph_1()
+    Plot(G)
+    PlotNode(G, "C")
 n = GetClosest(G,15,5)
 print (n.name) # La respuesta debe ser J
 n = GetClosest(G,8,19)

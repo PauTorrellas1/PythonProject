@@ -30,7 +30,6 @@ def SearchNode(g,name):
     '''
     b=True
     for n in g.nodes:
-        print(n)
         if n.name == name:
             b=False
             return n
