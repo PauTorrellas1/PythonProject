@@ -132,3 +132,19 @@ def read_file(Nfile:str):
             AddSegment(G, name, n1, n2)
         line = F.readline()
     return G
+
+def CreateNode(g,name,x,y):
+    return AddNode(g,Node(name, x, y))
+
+def DeleteNode(g, node_name):
+    node = SearchNode(g, node_name)
+    if node:
+        g.nodes.remove(node)
+        g.segments = [s for s in g.segments if s.na != node and s.nb != node]
+        for n in g.nodes:
+            if node in n.neighbors:
+                n.neighbors.remove(node)
+        return True
+    else:
+        print ('No encontrado')
+        return False

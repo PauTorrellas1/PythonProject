@@ -46,10 +46,12 @@ def CreateGraph_1 ():
 print ("Probando el grafo...")
 
 def show_graph():
+    global G
     G = CreateGraph_1()
     Plot(G)
 
 root = tk.Tk()
+G = CreateGraph_1()
 root.title("GUI")
 
 def button1():
@@ -108,12 +110,32 @@ button2()
 def Entries():
     tk.Label(root, text="File Name").grid(row=0, column=2)
     tk.Label(root, text="Origin Name").grid(row=1, column=2)
+    tk.Label(root, text="New node name").grid(row=2, column=2)
+    tk.Label(root, text="X").grid(row=3, column=2)
+    tk.Label(root, text="Y").grid(row=4, column=2)
+    tk.Label(root, text="From").grid(row=6, column=2)
+    tk.Label(root, text="To").grid(row=7, column=2)
+    tk.Label(root, text="Delete Node").grid(row=9, column=2)
 
     e1 = tk.Entry(root)
     e2 = tk.Entry(root)
+    e_name = tk.Entry(root)
+    e_x = tk.Entry(root)
+    e_y = tk.Entry(root)
 
     e1.grid(row=0, column=3)
     e2.grid(row=1, column=3)
+    e_name.grid(row=2, column=3)
+    e_x.grid(row=3, column=3)
+    e_y.grid(row=4, column=3)
+    e_seg = tk.Entry(root)
+    e_from = tk.Entry(root)
+    e_to = tk.Entry(root)
+    e_from.grid(row=6, column=3)
+    e_to.grid(row=7, column=3)
+
+    e_delete = tk.Entry(root)
+    e_delete.grid(row=9, column=3)
 
     def entry1():
         G = read_file(e1.get())
@@ -122,6 +144,24 @@ def Entries():
     def entry2():
         G = CreateGraph_1()
         PlotNode(G, e2.get())
+
+    def add_node():
+        global G
+        name = e_name.get()
+        x = float(e_x.get())
+        y = float(e_y.get())
+        AddNode(G, Node(name, x, y))
+        Plot(G)
+
+    def add_segment():
+        global G
+        AddSegment(G, e_seg.get(), e_from.get(), e_to.get())
+        Plot(G)
+
+    def delete_node():
+        global G
+        DeleteNode(G, e_delete.get())
+        Plot(G)
 
     def button3():
         button3 = tk.Button(root,
@@ -173,9 +213,24 @@ def Entries():
                             wraplength=100)
 
         button4.grid(row=1, column=4)
+
+
     button3()
     button4()
+
+    tk.Button(root,
+              text="Add Node",
+              command=add_node).grid(row=5, column=3)
+
+    tk.Button(root, text="Add Segment",
+              command=add_segment).grid(row=8, column=3)
+
+    tk.Button(root, text="Delete",
+              command=delete_node).grid(row=10, column=3)
+    
 Entries()
+
+
 
 
 
