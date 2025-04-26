@@ -111,7 +111,7 @@ button2()
 
 def Entries():
     tk.Label(root, text="File Name").grid(row=0, column=2)
-    tk.Label(root, text="Origin Name").grid(row=1, column=2)
+    #tk.Label(root, text="Origin Name").grid(row=1, column=2)
     tk.Label(root, text="New node name").grid(row=2, column=2)
     tk.Label(root, text="X").grid(row=3, column=2)
     tk.Label(root, text="Y").grid(row=4, column=2)
@@ -119,24 +119,23 @@ def Entries():
     tk.Label(root, text="To").grid(row=7, column=2)
     tk.Label(root, text="Delete Node").grid(row=9, column=2)
 
-    e1 = tk.Entry(root)
-    e2 = tk.Entry(root)
-    e_name = tk.Entry(root)
-    e_x = tk.Entry(root)
-    e_y = tk.Entry(root)
+    e1 = tk.Entry(root) #Primer entry
+    e2 = tk.Entry(root) #Segundo entry
+    e_name = tk.Entry(root) #New_node nombre
+    e_x = tk.Entry(root) #New_node valor x
+    e_y = tk.Entry(root) #New_node valor y
+    e_from = tk.Entry(root) #Origen new_segment
+    e_to = tk.Entry(root) #Destino new_segment
+    e_seg = tk.Entry(root) #??
+    e_delete = tk.Entry(root) #Delete node
 
     e1.grid(row=0, column=3)
-    e2.grid(row=1, column=3)
+    #e2.grid(row=1, column=3)
     e_name.grid(row=2, column=3)
     e_x.grid(row=3, column=3)
     e_y.grid(row=4, column=3)
-    e_seg = tk.Entry(root)
-    e_from = tk.Entry(root)
-    e_to = tk.Entry(root)
     e_from.grid(row=6, column=3)
     e_to.grid(row=7, column=3)
-
-    e_delete = tk.Entry(root)
     e_delete.grid(row=9, column=3)
 
     def entry1():
@@ -190,7 +189,7 @@ def Entries():
                             wraplength=100)
 
         button3.grid(row=0, column=4)
-    def button4():
+    '''def button4():
         button4 = tk.Button(root,
                             text="Entry",
                             command=(entry2),
@@ -214,21 +213,22 @@ def Entries():
                             width=5,
                             wraplength=100)
 
-        button4.grid(row=1, column=4)
+        button4.grid(row=1, column=4)'''
 
 
     button3()
-    button4()
+    #button4()
+    #De esta manera no sale el segundo entry, innecesario por el momento
 
     tk.Button(root,
               text="Add Node",
-              command=add_node).grid(row=5, column=3)
+              command=add_node, cursor="hand2").grid(row=5, column=3)
 
     tk.Button(root, text="Add Segment",
-              command=add_segment).grid(row=8, column=3)
+              command=add_segment, cursor="hand2").grid(row=8, column=3)
 
     tk.Button(root, text="Delete",
-              command=delete_node).grid(row=10, column=3)
+              command=delete_node, cursor="hand2").grid(row=10, column=3)
     
 Entries()
 
