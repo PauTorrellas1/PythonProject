@@ -51,6 +51,19 @@ def AddSegment(g, Vector:str, nOrigin, nDestination):
         print("node not valid")
         return False
 
+def SearchSegment(g, vector):
+    '''''
+    Esta función buscara segmentos en el grafo para retornarlo si lo encuentra
+    o retornar None si no lo hace. Es esencialmente lo mismo que SearchNode
+    '''
+    b = True
+    for segment in g.segments:
+        if segment.name == vector:
+            b = False
+            return segment
+        if b:
+            return None
+
 def GetClosest (g, x:float,y:float):
     '''
     Esta función encuentra el nodo más cercano a un punto y lo retorna
@@ -147,4 +160,13 @@ def DeleteNode(g, node_name):
         return True
     else:
         print ('No encontrado')
+        return False
+
+def DeleteSegment(g, segment_name):
+    segment = SearchSegment(g, segment_name)
+    if segment:
+        g.segments.remove(segment)
+        return True
+    else:
+        print('Segmento no encontrado')
         return False

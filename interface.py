@@ -58,7 +58,7 @@ root.title("GUI")
 
 def button1():
     button1 = tk.Button(root,
-                       text="Show graph 1",
+                       text="Show original graph",
                        command=show_graph,
                        activebackground="blue",
                        activeforeground="white",
@@ -83,7 +83,7 @@ def button1():
     button1.grid(row=0, column=1)
 def button2():
     button2 = tk.Button(root,
-                       text="Show graph 2",
+                       text="Show edited graph",
                        command=show_graph_1,
                        activebackground="blue",
                        activeforeground="white",
@@ -118,6 +118,7 @@ def Entries():
     tk.Label(root, text="From").grid(row=6, column=2)
     tk.Label(root, text="To").grid(row=7, column=2)
     tk.Label(root, text="Delete Node").grid(row=9, column=2)
+    tk.Label(root, text='Delete segment').grid(row=11, column=2)
 
     e1 = tk.Entry(root) #Primer entry
     e2 = tk.Entry(root) #Segundo entry
@@ -127,7 +128,8 @@ def Entries():
     e_from = tk.Entry(root) #Origen new_segment
     e_to = tk.Entry(root) #Destino new_segment
     e_seg = tk.Entry(root) #??
-    e_delete = tk.Entry(root) #Delete node
+    e_delete_n = tk.Entry(root) #Delete node
+    e_delete_s = tk.Entry(root) #Delete segments
 
     e1.grid(row=0, column=3)
     #e2.grid(row=1, column=3)
@@ -136,7 +138,8 @@ def Entries():
     e_y.grid(row=4, column=3)
     e_from.grid(row=6, column=3)
     e_to.grid(row=7, column=3)
-    e_delete.grid(row=9, column=3)
+    e_delete_n.grid(row=9, column=3)
+    e_delete_s.grid(row=11, column=3)
 
     def entry1():
         G = read_file(e1.get())
@@ -159,9 +162,14 @@ def Entries():
         AddSegment(G, e_seg.get(), e_from.get(), e_to.get())
         Plot(G)
 
+    def delete_segment():
+        global G
+        DeleteSegment(G, e_delete_s.get())
+        Plot(G)
+
     def delete_node():
         global G
-        DeleteNode(G, e_delete.get())
+        DeleteNode(G, e_delete_n.get())
         Plot(G)
 
     def button3():
@@ -229,6 +237,9 @@ def Entries():
 
     tk.Button(root, text="Delete",
               command=delete_node, cursor="hand2").grid(row=10, column=3)
+
+    tk.Button(root, text='Delete',
+              command=delete_segment, cursor='hand2').grid(row=12, column=3)
     
 Entries()
 
