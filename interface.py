@@ -46,8 +46,10 @@ def CreateGraph_1 ():
 print ("Probando el grafo...")
 
 def show_graph():
-    global G
-    G = CreateGraph_1()
+    G = CreateGraph_1() #Si quitamos este G = CreateGraph_1() los cambios que hagamos (por ej. añadir nodo o borrar nodos) se quedan guardados en el show graph
+    Plot(G)
+
+def show_graph_1():
     Plot(G)
 
 root = tk.Tk()
@@ -82,7 +84,7 @@ def button1():
 def button2():
     button2 = tk.Button(root,
                        text="Show graph 2",
-                       command=show_graph,
+                       command=show_graph_1,
                        activebackground="blue",
                        activeforeground="white",
                        anchor="center",
