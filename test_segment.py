@@ -7,3 +7,4 @@ s2 = Segment ("222", n2, n3)
 
 print (s1.__dict__)
 print (s2.__dict__)
+#Funciona

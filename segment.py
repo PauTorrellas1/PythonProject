@@ -7,3 +7,4 @@ class Segment:
         self.na=na
         self.nb=nb
         self.cost=Distance(na,nb)
+#Definimos la clase segment

@@ -148,6 +148,7 @@ def read_file(Nfile:str):
 
 def CreateNode(g,name,x,y):
     return AddNode(g,Node(name, x, y))
+#Esta función crea un node y lo añade a Node
 
 def DeleteNode(g, node_name):
     node = SearchNode(g, node_name)

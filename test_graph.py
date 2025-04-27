@@ -44,6 +44,6 @@ G = CreateGraph_1 ()
 Plot(G)
 PlotNode(G, "C")
 n = GetClosest(G,15,5)
-print (n.name) # La respuesta debe ser J
+print (n.name) # La respuesta debe ser J.
 n = GetClosest(G,8,19)
-print (n.name) # La respuesta debe ser B
+print (n.name) # La respuesta debe ser B.
