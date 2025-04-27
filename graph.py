@@ -53,7 +53,7 @@ def AddSegment(g, Vector:str, nOrigin, nDestination):
 
 def SearchSegment(g, Vector):
     '''''
-    Esta función buscara segmentos en el grafo para retornarlo si lo encuentra
+    Esta función buscará segmentos en el grafo para retornarlo si lo encuentra
     o retornar None si no lo hace. Es esencialmente lo mismo que SearchNode
     '''
     b = True
@@ -79,18 +79,22 @@ def GetClosest (g, x:float,y:float):
     return Closestn
 
 def NodeConfig (g):
+    '''Especificamos la configuración de los nodos mostrados en el gráfico'''
     # Crea la configuración base de los nodos
     for n in g.nodes:
         p.plot([n.x], [n.y], "r", marker="D", zorder=2)
         p.text(n.x+0.5, n.y-0.5, n.name, fontweight='bold')
 
 def SegmentConfig(g,color:str):
+    ''''Especificamos la configuración de los segmentos mostrados en el gráfico'''
     #Crea la configuración base de los segmentos
     for s in g. segments:
-        p.plot([s.na.x, s.nb.x], [s.na.y, s.nb.y], color, zorder=1)
-        p.text((s.na.x + s.nb.x)/2+0.5, (s.na.y + s.nb.y)/2+0.5, f"{s.cost}", zorder=3)
+        p.plot([s.origin.x, s.destination.x], [s.origin.y, s.destination.y], color, zorder=1)
+        p.text((s.origin.x + s.destination.x) / 2 + 0.5, (s.origin.y + s.destination.y) / 2 + 0.5, f"{s.cost:.2f}",
+                zorder=3)
 
 def Plot(g):
+    '''Fabricamos el gráfico que mostrará todos nuestros datos'''
     #Muestra todos los nodos y los segmentos y su coste
     NodeConfig(g)
     SegmentConfig(g,"#979797")
@@ -101,7 +105,8 @@ def Plot(g):
     p.show()
 
 def PlotNode (g, Norigin):
-    #Esta función muestra el origen azul, sus vecinos verdes, los segmentos que los unen rojos y el resto de nodos grises
+    '''Fabricamos un gráfico que nos muestre un nodo de origen en azul, a sus vecinos en verde y los
+    segmentos que los unen en rojo. Todos los nodos que no sean vecinos serán mostrados en gris'''
     origin=SearchNode(g,Norigin)
     if origin in g.nodes:
         for n in g.nodes:
@@ -112,7 +117,6 @@ def PlotNode (g, Norigin):
 
         for n in origin.neighbors:
             p.scatter(n.x, n.y, color="g", zorder=3)
-
         for n in origin.neighbors: #segmentos origen-vecinos
             p.plot([origin.x, n.x], [origin.y, n.y], color="r", zorder=1)
             p.text((origin.x + n.x)/2+0.5, (origin.y + n.y)/2+0.5, f"{Distance(origin,n)}", zorder=4)
@@ -121,7 +125,6 @@ def PlotNode (g, Norigin):
         p.xlabel("x")
         p.ylabel("y")
         p.show()
-
         return True
     else:
         return False
@@ -147,14 +150,16 @@ def read_file(Nfile:str):
     return G
 
 def CreateNode(g,name,x,y):
+    '''Esta función crea un node y lo añade a Node'''
     return AddNode(g,Node(name, x, y))
-#Esta función crea un node y lo añade a Node
+
 
 def DeleteNode(g, node_name):
+    '''Esta función elimina un nodo de nodos'''
     node = SearchNode(g, node_name)
     if node:
         g.nodes.remove(node)
-        g.segments = [s for s in g.segments if s.na != node and s.nb != node]
+        g.segments = [s for s in g.segments if s.origin != node and s.destination != node]
         for n in g.nodes:
             if node in n.neighbors:
                 n.neighbors.remove(node)
@@ -164,6 +169,7 @@ def DeleteNode(g, node_name):
         return False
 
 def DeleteSegment(g, Vector):
+    '''Esta función elimina un segmento de segmentos'''
     segments_to_remove = [s for s in g.segments if s.name in (Vector, Vector[::-1])]
     SearchSegment(g, Vector)
     if not segments_to_remove:

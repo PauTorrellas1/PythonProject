@@ -4,6 +4,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 
 def create_new_graph():
+    '''Creamos un nuevo gráfico en blanco'''
     global M_Graph
     M_Graph = Graph()
 
@@ -20,7 +21,7 @@ def create_new_graph():
                     print('There are not any nodes in the graph')
                 if hasattr(M_Graph, 'segments') and M_Graph.segments:
                     for segment in M_Graph.segments:
-                        graph_info.write(f'S,{segment.name},{segment.na.name},{segment.nb.name}\n')
+                        graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
                 else:
                     print('There are not any segments in the graph')
 
@@ -35,6 +36,7 @@ def create_new_graph():
         text_widget = tk.Text(text_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set)
         text_widget.pack(fill=tk.BOTH, expand=True)
         scrollbar.config(command=text_widget.yview)
+        ''''Personalización y opciones de la ventana donde se muestra toda la información a guardar'''
 
         info_text = "=== GRAPH INFORMATION ===\n\n"
 
@@ -46,15 +48,16 @@ def create_new_graph():
             info_text += "No nodes in the graph\n"
 
         info_text += "\n"
-
         if hasattr(M_Graph, 'segments') and M_Graph.segments:
             info_text += "SEGMENTS:\n"
             for segment in M_Graph.segments:
-                segment.name = segment.na.name+segment.nb.name
-                dist = Distance(segment.na, segment.nb)
-                info_text += f"- {segment.name}: {segment.na.name} -> {segment.nb.name} (Distance: {dist})\n"
+                segment.name = segment.origin.name+segment.destination.name
+                dist = Distance(segment.origin, segment.destination)
+                info_text += f"- {segment.name}: {segment.origin.name} -> {segment.destination.name} (Distance: {dist})\n"
         else:
             info_text += "No segments in the graph\n"
+        '''Los nodos y segmentos guardados en el gráfico, ordenados alfabéticamente'''
+
         text_widget.insert(tk.END, info_text)
 
         save_button = tk.Button(info_window, text='Save the information',
@@ -62,20 +65,24 @@ def create_new_graph():
         save_button.pack(pady=9)
         close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
         close_button.pack(pady=10)
+        '''Botón de cerrar y botón de guardar la información'''
 
     root = tk.Tk()
     root.title('GUI_CREATE_GRAPH')
 
     def show_neighbors():
+        '''Muestra los vecinos de un nodo de nuestro gráfico'''
         root = tk.Tk()
         root.title('GUI_SHOW_NEIGHBOURS')
 
         def Entries_neighbors():
+            '''Especificamos de que nodo queremos conocer sus vecinos'''
             tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
             e_name = tk.Entry(root)  # Node nombre
             e_name.grid(row=1, column=3)
 
             def Add_neighbors_node():
+                '''Mostramos el gráfico con el nodo escogido y sus vecinos, junto los segmentos que los unen'''
                 e_node_name = e_name.get().strip()
                 PlotNode(M_Graph, e_node_name)
 
@@ -85,9 +92,11 @@ def create_new_graph():
         Entries_neighbors()
 
     def show_new_graph():
+        '''Mostramos el gráfico creado por nosotros, al principio completamente en blanco y vacío'''
         Plot(M_Graph)
 
     def button_new_graph():
+        '''Botón que muestra el gráfico que hemos creado nosotros desde cero'''
         button_new_graph = tk.Button(root,
                             text="Show my new graph",
                             command=show_new_graph,
@@ -173,6 +182,9 @@ def create_new_graph():
     button_show_neighbors()
 
     def Entries_Create_Graph():
+        '''Muestra de las distintas entradas que tiene el tk de crear un nuevo gráfico,
+        son esecialmente las mismas que las de la interfaz, solo que estas actúan
+        sobre un gráfico creado completamente por nosotros'''
         tk.Label(root, text="New node name").grid(row=2, column=2)
         tk.Label(root, text="X").grid(row=3, column=2)
         tk.Label(root, text="Y").grid(row=4, column=2)
@@ -188,6 +200,7 @@ def create_new_graph():
         e_to = tk.Entry(root)  # Destino new_segment
         e_delete_n = tk.Entry(root)  # Delete node
         e_delete_s = tk.Entry(root)  # Delete origin segment
+        '''Las distinas entradas de texto'''
 
         e_name.grid(row=2, column=3)
         e_x.grid(row=3, column=3)
@@ -196,8 +209,10 @@ def create_new_graph():
         e_to.grid(row=7, column=3)
         e_delete_n.grid(row=9, column=3)
         e_delete_s.grid(row=11, column=3)
+        '''Posiciones de las entradas'''
 
         def add_node_new_graph():
+            '''Añadimos un nodo nuevo a nuestro gráfico'''
             name = e_name.get()
             x = float(e_x.get())
             y = float(e_y.get())
@@ -211,6 +226,7 @@ def create_new_graph():
                 e_y.delete(0, 'end')
 
         def add_segment_new_graph():
+            '''Añadimos un segmento nuevo a nuestro gráfico'''
             e_name_from = e_from.get().strip()
             e_name_to = e_to.get().strip()
             e_str_from = e_from
@@ -222,27 +238,28 @@ def create_new_graph():
             Plot(M_Graph)
 
         def delete_node_new_graph():
+            '''Eliminamos un nodo de nuestro gráfico'''
             DeleteNode(M_Graph, e_delete_n.get())
             e_delete_n.delete(0, 'end')
             Plot(M_Graph)
 
         def delete_segment_new_graph():
+            '''Eliminamos un segmento de nuestro gráfico'''
             e_delete_s.get()
             DeleteSegment(M_Graph, e_delete_s.get())
             e_delete_s.delete(0, 'end')
             Plot(M_Graph)
+
         tk.Button(root,
                       text="Add Node",
                       command=add_node_new_graph, cursor="hand2").grid(row=5, column=3)
-
         tk.Button(root, text="Add Segment",
                       command=add_segment_new_graph, cursor="hand2").grid(row=8, column=3)
-
         tk.Button(root, text="Delete Node",
                       command=delete_node_new_graph, cursor="hand2").grid(row=10, column=3)
-
         tk.Button(root, text='Delete Segment',
                       command=delete_segment_new_graph, cursor='hand2').grid(row=13, column=3)
+        '''Los botones que llevan acabo todas estas acciones, cumplen la función de un enter'''
 
     Entries_Create_Graph()
 

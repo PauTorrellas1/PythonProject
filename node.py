@@ -2,6 +2,7 @@ import math
 
 class Node:
     def __init__(self, name, x, y):
+        '''Definimo la clase Node, compuesta por su nombre y la posición x, y'''
         self.name = name
         self.x = float(x)
         self.y = float(y)

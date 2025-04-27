@@ -45,10 +45,13 @@ def CreateGraph_1 ():
 print ("Probando el grafo...")
 
 def show_graph():
+    '''Mostramos el gráfico original con los datos proporcionados arriba'''
     G = CreateGraph_1() #Si quitamos este G = CreateGraph_1() los cambios que hagamos (por ej. añadir nodo o borrar nodos) se quedan guardados en el show graph
     Plot(G)
 
 def show_graph_1():
+    '''Mostramos el nuevo gráfico editado con nuevos segmentos , nodos
+    y con los segmentos o nodos que hayamos eliminado '''
     Plot(G)
 
 
@@ -64,7 +67,7 @@ def print_graph_info():
                 print('There are not any nodes in the graph')
             if hasattr(G, 'segments') and G.segments:
                 for segment in G.segments:
-                    graph_info.write(f'S,{segment.name},{segment.na.name},{segment.nb.name}\n')
+                    graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
             else:
                 print('There are not any segments in the graph')
 
@@ -79,6 +82,7 @@ def print_graph_info():
     text_widget = tk.Text(text_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set)
     text_widget.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=text_widget.yview)
+    '''Opciones de visualización de la ventana donde observamos todos los nodos y segmentos del gráfico'''
 
     info_text = "=== GRAPH INFORMATION ===\n\n"
 
@@ -88,17 +92,18 @@ def print_graph_info():
             info_text += f"- {node.name}: (x={node.x}, y={node.y})\n"
     else:
         info_text += "No nodes in the graph\n"
-
     info_text += "\n"
-
     if hasattr(G, 'segments') and G.segments:
         info_text += "SEGMENTS:\n"
         for segment in G.segments:
-            dist = Distance(segment.na, segment.nb)
-            info_text += f"- {segment.name}: {segment.na.name} -> {segment.nb.name} (Distance: {dist})\n"
+            dist = Distance(segment.origin, segment.destination)
+            info_text += f"- {segment.name}: {segment.origin.name} -> {segment.destination.name} (Distance: {dist})\n"
     else:
         info_text += "No segments in the graph\n"
     text_widget.insert(tk.END, info_text)
+    '''Mostramos toda la información guardada, es decir, los Nodos y sus posiciones, 
+    y los segmentos y sus nombres, los respectivos nodos que los forman y el 
+    coste de cada uno de ellos'''
 
     save_button = tk.Button(info_window, text='Save the information', command=lambda: [save_info(), info_window.destroy()])
     save_button.pack(pady=9)
@@ -106,15 +111,18 @@ def print_graph_info():
     close_button.pack(pady=10)
 
 def show_neighbors():
+    '''Esta función muestra los vecinos del nodo que queramos '''
     root = tk.Tk()
     root.title('GUI_SHOW_NEIGHBOURS')
 
     def Entries_neighbors():
+        '''Aquí escribiremos el nombre del nodo del cual querámos analizar sus vecinos'''
         tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
         e_name = tk.Entry(root)  # Node nombre
         e_name.grid(row=1, column=3)
 
         def Add_neighbors_node():
+            '''Mostramos todos los nodos vecinos del nodo escogido'''
             e_node_name = e_name.get().strip()
             PlotNode(G, e_node_name)
 
@@ -129,6 +137,7 @@ root.title("GUI")
 
 
 def button1():
+    '''Mostramos el gráfico original con la información propporcionada'''
     button1 = tk.Button(root,
                        text="Show original graph",
                        command=show_graph,
@@ -154,6 +163,7 @@ def button1():
 
     button1.grid(row=0, column=1)
 def button2():
+    '''Mostramos el nuevo gráfico editado por nosotros'''
     button2 = tk.Button(root,
                        text="Show edited graph",
                        command=show_graph_1,
@@ -179,6 +189,9 @@ def button2():
 
     button2.grid(row=1, column=1)
 def button4():
+    '''Creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
+    donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
+    la ventana anterior con la diferencia que este gráfico está creado desde cero por nostros mismos'''
     button4 = tk.Button(root,
                        text="Crete new graph",
                        command=create_new_graph,
@@ -266,6 +279,10 @@ button_save_graph_info()
 button_show_neighbors()
 
 def Entries():
+    '''Cada una de las entradas de texto que usaremos en el menú principal
+    de nuestra aplicación. si llevan tk.Label son únicamente texto,
+    mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
+    Si llevan tk.Button son botones para presionar y llevar acabo una acción o comando.'''
     tk.Label(root, text="File Name").grid(row=0, column=2)
     #tk.Label(root, text="Origin Name").grid(row=1, column=2)
     tk.Label(root, text="New node name").grid(row=2, column=2)
@@ -298,15 +315,18 @@ def Entries():
     e_delete_s.grid(row=11, column=3)
 
     def entry1():
+        '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         G = read_file(e1.get())
         e1.delete(0, 'end')
         Plot(G)
 
-    def entry2():
+    '''def entry2():
         G = CreateGraph_1()
-        PlotNode(G, e2.get())
+        PlotNode(G, e2.get())'''
 
     def add_node():
+        '''Añadimos un nodo al gráfico, marcando el nombre del nodo
+        y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
         global G
         name = e_name.get().strip()
         x = float(e_x.get())
@@ -321,30 +341,36 @@ def Entries():
             e_y.delete(0, 'end')
 
     def add_segment():
+        '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
+        o creados con la función de AddNode'''
         global G
-        e_name_from = e_from.get().strip()  # Get the "from" node name
-        e_name_to = e_to.get().strip()  # Get the "to" node name
-        e_seg = f"{e_name_from}{e_name_to}" # Create segment name
-        e_seg1 = f"{e_name_to}{e_name_from}"
+        e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
+        e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
+        e_seg = f"{e_name_from}{e_name_to}" '''Creamos el nombre del segmento (vector) 
+        a partir del nodo destino  del nodo final'''
+        e_seg1 = f"{e_name_to}{e_name_from}" '''Creamos el otro vector (AB - BA)'''
 
-        # Call AddSegment with the segment name and node names
         AddSegment(G, e_seg, e_name_from, e_name_to)
         AddSegment(G, e_seg1, e_name_to, e_name_from)
+        '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
 
-        # Clear the entry fields
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
+        '''Limpiamos las entradas de texto'''
 
         # Plot the updated graph
         Plot(G)
 
     def delete_node():
+        '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
         global G
         DeleteNode(G, e_delete_n.get())
         e_delete_n.delete(0, 'end')
         Plot(G)
 
     def delete_segment():
+        '''La misma función que delete_node, solo que en lugar de eliminar
+        nodos esta función elimina segmentos'''
         global G
         e_delete_s.get()
         DeleteSegment(G, e_delete_s.get())
@@ -352,6 +378,7 @@ def Entries():
         Plot(G)
 
     def button3():
+        '''Botón de entry para crear el gráfico a partir de un documento de texto'''
         button3 = tk.Button(root,
                             text="Entry",
                             command=entry1,
@@ -410,16 +437,14 @@ def Entries():
     tk.Button(root,
               text="Add Node",
               command=add_node, cursor="hand2").grid(row=5, column=3)
-
     tk.Button(root, text="Add Segment",
               command=add_segment, cursor="hand2").grid(row=8, column=3)
-
     tk.Button(root, text="Delete Node",
               command=delete_node, cursor="hand2").grid(row=10, column=3)
-
     tk.Button(root, text='Delete Segment',
               command=delete_segment, cursor='hand2').grid(row=13, column=3)
-    
+    '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
+    se transforma en una mano (hand2) al pasar por encima'''
 Entries()
 
 root.mainloop()
