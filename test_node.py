@@ -1,4 +1,4 @@
-from node import *
+from node1 import *
 n1 = Node ('aaa', 0, 0)
 n2 = Node ('bbb', 3, 4)
 print (Distance(n1,n2))
