@@ -85,13 +85,19 @@ def NodeConfig (g):
         p.plot([n.x], [n.y], "r", marker="D", zorder=2)
         p.text(n.x+0.5, n.y-0.5, n.name, fontweight='bold')
 
-def SegmentConfig(g,color:str):
-    ''''Especificamos la configuración de los segmentos mostrados en el gráfico'''
-    #Crea la configuración base de los segmentos
-    for s in g. segments:
-        p.plot([s.origin.x, s.destination.x], [s.origin.y, s.destination.y], color, zorder=1)
-        p.text((s.origin.x + s.destination.x) / 2 + 0.5, (s.origin.y + s.destination.y) / 2 + 0.5, f"{s.cost:.2f}",
-                zorder=3)
+
+def SegmentConfig(g, color: str):
+    '''Configuramos los segmentos mostrados en el gráfico'''
+    for s in g.segments:
+        p.plot([s.origin.x, s.destination.x],
+                 [s.origin.y, s.destination.y],
+                 color, zorder=1)
+
+        # Mostrar coste con 2 decimales
+        cost_text = f"{s.cost:.2f}"  # Formato: 2 decimales
+        p.text((s.origin.x + s.destination.x) / 2 + 0.5,
+                 (s.origin.y + s.destination.y) / 2 + 0.5,
+                 cost_text, zorder=3)
 
 def Plot(g):
     '''Fabricamos el gráfico que mostrará todos nuestros datos'''
@@ -104,30 +110,34 @@ def Plot(g):
     p.ylabel("y")
     p.show()
 
-def PlotNode (g, Norigin):
-    '''Fabricamos un gráfico que nos muestre un nodo de origen en azul, a sus vecinos en verde y los
-    segmentos que los unen en rojo. Todos los nodos que no sean vecinos serán mostrados en gris'''
-    origin=SearchNode(g,Norigin)
-    if origin in g.nodes:
-        for n in g.nodes:
-            p.scatter(n.x, n.y, color="#979797", zorder=2) #zorder es el orden en el que se muestran
-            p.text(n.x+0.5, n.y+0.5, n.name, fontweight='bold')
 
-        p.scatter(origin.x, origin.y, color="b", zorder=3)
-
-        for n in origin.neighbors:
-            p.scatter(n.x, n.y, color="g", zorder=3)
-        for n in origin.neighbors: #segmentos origen-vecinos
-            p.plot([origin.x, n.x], [origin.y, n.y], color="r", zorder=1)
-            p.text((origin.x + n.x)/2+0.5, (origin.y + n.y)/2+0.5, f"{Distance(origin,n)}", zorder=4)
-
-        p.grid(color="#717171", linestyle="--")
-        p.xlabel("x")
-        p.ylabel("y")
-        p.show()
-        return True
-    else:
+def PlotNode(g, Norigin):
+    '''Muestra un nodo de origen (azul), sus vecinos (verde) y segmentos (rojo).
+    Nodos no vecinos en gris. Costes con 2 decimales y mejor alineación.'''
+    origin = SearchNode(g, Norigin)
+    if origin not in g.nodes:
         return False
+    for n in g.nodes:
+        p.scatter(n.x, n.y, color="#979797", zorder=2)
+        p.text(n.x + 0.5, n.y + 0.5, n.name, fontweight='bold', fontsize=9)
+    p.scatter(origin.x, origin.y, color="b", s=100, zorder=3)
+    for neighbor in origin.neighbors:
+        p.plot([origin.x, neighbor.x], [origin.y, neighbor.y],
+               color="r", linewidth=2, zorder=1)
+        cost = f"{Distance(origin, neighbor):.2f}"
+        text_x = (origin.x + neighbor.x) / 2 + 0.3
+        text_y = (origin.y + neighbor.y) / 2 + 0.3
+        p.text(text_x, text_y, cost,
+               zorder=4, fontsize=8, color='black',
+               bbox=dict(facecolor='white', alpha=0.7, edgecolor='none', boxstyle='round'))
+    for neighbor in origin.neighbors:
+        p.scatter(neighbor.x, neighbor.y, color="g", s=80, zorder=3)
+    p.grid(color="#717171", linestyle="--", alpha=0.5)
+    p.xlabel("X", fontsize=10)
+    p.ylabel("Y", fontsize=10)
+    p.title(f"Neighbors of '{Norigin}'", fontweight='bold')
+    p.show()
+    return True
 
 def read_file(Nfile:str):
     """

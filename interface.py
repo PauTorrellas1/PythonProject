@@ -46,7 +46,7 @@ print ("Probando el grafo...")
 
 def show_graph():
     '''Mostramos el gráfico original con los datos proporcionados arriba'''
-    G = CreateGraph_1() #Si quitamos este G = CreateGraph_1() los cambios que hagamos (por ej. añadir nodo o borrar nodos) se quedan guardados en el show graph
+    G = CreateGraph_1()
     Plot(G)
 
 def show_graph_1():
@@ -331,6 +331,7 @@ def Entries():
 
     def entry1():
         '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
+        global G
         try:
             G = read_file(e1.get())
             Plot(G)

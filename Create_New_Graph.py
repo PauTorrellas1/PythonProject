@@ -71,7 +71,7 @@ def create_new_graph():
     root.title('GUI_CREATE_GRAPH')
 
     def show_neighbors():
-        '''Muestra los vecinos de un nodo de nuestro gráfico'''
+        '''Esta función muestra los vecinos del nodo que queramos '''
         root = tk.Tk()
         root.title('Node Neighbors Viewer')
 
@@ -97,8 +97,13 @@ def create_new_graph():
                     return
                 PlotNode(M_Graph, node_name)
                 root.destroy()
+
             tk.Button(root, text='Search Node',
-                      command=Add_neighbors_node, cursor='hand2').grid(row=13, column=3)
+                      command=Add_neighbors_node,
+                      cursor='hand2').grid(row=13, column=3)
+
+        Entries_neighbors()
+        root.mainloop()
 
         Entries_neighbors()
 
