@@ -243,7 +243,6 @@ def create_new_graph():
         e_y = tk.Entry(root)  # New_node valor y
         e_from = tk.Entry(root)  # Origen new_segment
         e_to = tk.Entry(root)  # Destino new_segment
-        e_seg = tk.Entry(root)  # ??
         e_delete_n = tk.Entry(root)  # Delete node
         e_delete_s = tk.Entry(root)  # Delete origin segment
 
@@ -269,7 +268,12 @@ def create_new_graph():
                 e_y.delete(0, 'end')
 
         def add_segment_new_graph():
-            AddSegment(M_Graph, e_seg.get(), e_from.get(), e_to.get())
+            e_name_from = e_from.get().strip()
+            e_name_to = e_to.get().strip()
+            e_str_from = e_from
+            e_str_to = e_to
+            e_seg = ''.join(sorted([e_name_from, e_name_to]))
+            AddSegment(M_Graph, e_seg, e_str_from.get(), e_str_to.get())
             e_to.delete(0, 'end')
             e_from.delete(0, 'end')
             Plot(M_Graph)
@@ -437,7 +441,6 @@ def Entries():
     e_y = tk.Entry(root) #New_node valor y
     e_from = tk.Entry(root) #Origen new_segment
     e_to = tk.Entry(root) #Destino new_segment
-    e_seg = tk.Entry(root) #??
     e_delete_n = tk.Entry(root) #Delete node
     e_delete_s = tk.Entry(root) #Delete origin segment
 
@@ -476,7 +479,12 @@ def Entries():
 
     def add_segment():
         global G
-        AddSegment(G, e_seg.get(), e_from.get(), e_to.get())
+        e_name_from = e_from.get().strip()
+        e_name_to = e_to.get().strip()
+        e_str_from = e_from
+        e_str_to = e_to
+        e_seg = ''.join(sorted([e_name_from, e_name_to]))
+        AddSegment(G, e_seg, e_str_from.get(), e_str_to.get())
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
         Plot(G)
