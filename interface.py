@@ -153,8 +153,9 @@ def create_new_graph():
         if hasattr(M_Graph, 'segments') and M_Graph.segments:
             info_text += "SEGMENTS:\n"
             for segment in M_Graph.segments:
+                segment.name = segment.na.name+segment.nb.name
                 dist = Distance(segment.na, segment.nb)
-                info_text += f"- {str(segment.na)+str(segment.nb)}: {segment.na.name} -> {segment.nb.name} (Distance: {dist})\n"
+                info_text += f"- {segment.name}: {segment.na.name} -> {segment.nb.name} (Distance: {dist})\n"
         else:
             info_text += "No segments in the graph\n"
         text_widget.insert(tk.END, info_text)
