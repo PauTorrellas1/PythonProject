@@ -113,21 +113,36 @@ def print_graph_info():
 def show_neighbors():
     '''Esta función muestra los vecinos del nodo que queramos '''
     root = tk.Tk()
-    root.title('GUI_SHOW_NEIGHBOURS')
+    root.title('Node Neighbors Viewer')
 
     def Entries_neighbors():
         '''Aquí escribiremos el nombre del nodo del cual querámos analizar sus vecinos'''
         tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
-        e_name = tk.Entry(root)  # Node nombre
+        e_name = tk.Entry(root)
         e_name.grid(row=1, column=3)
 
         def Add_neighbors_node():
             '''Mostramos todos los nodos vecinos del nodo escogido'''
-            e_node_name = e_name.get().strip()
-            PlotNode(G, e_node_name)
-
+            node_name = e_name.get().strip()
+            if not node_name:
+                print("Error: You must enter a node name")
+                return
+            node = SearchNode(G, node_name)
+            if not node:
+                print(f"Error: Node '{node_name}' doesn't exist")
+                return
+            if not node.neighbors:
+                print("Information: The introduced node doesn't have any neighbors")
+                root.destroy()
+                return
+            PlotNode(G, node_name)
+            root.destroy()
         tk.Button(root, text='Search Node',
-                command=Add_neighbors_node, cursor='hand2').grid(row=13, column=3)
+                  command=Add_neighbors_node,
+                  cursor='hand2').grid(row=13, column=3)
+
+    Entries_neighbors()
+    root.mainloop()
 
     Entries_neighbors()
 
@@ -316,9 +331,13 @@ def Entries():
 
     def entry1():
         '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
-        G = read_file(e1.get())
-        e1.delete(0, 'end')
-        Plot(G)
+        try:
+            G = read_file(e1.get())
+            Plot(G)
+        except FileNotFoundError:
+            print(f"Error: Archive not found")
+        except Exception as e:
+            print(f"Another error: {e}")
 
     '''def entry2():
         G = CreateGraph_1()
@@ -329,16 +348,25 @@ def Entries():
         y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
         global G
         name = e_name.get().strip()
-        x = float(e_x.get())
-        y = float(e_y.get())
+        x_str = e_x.get().strip()
+        y_str = e_y.get().strip()
+        if not name or not x_str or not y_str:
+            print("Error: All the entries must be filled")
+            return
+        try:
+            x = float(x_str)
+            y = float(y_str)
+        except ValueError:
+            print("Error: The coordinates must be numbers, they can't be letters or weird symbols")
+            return
         if SearchNode(G, name):
-            print('Ese nodo ya existe, escribe otro distinto')
-        else:
-            AddNode(G, Node(name, x, y))
-            Plot(G)
-            e_name.delete(0, 'end')
-            e_x.delete(0, 'end')
-            e_y.delete(0, 'end')
+            print(f'Error: The node "{name}" already exists')
+            return
+        AddNode(G, Node(name, x, y))
+        Plot(G)
+        e_name.delete(0, 'end')
+        e_x.delete(0, 'end')
+        e_y.delete(0, 'end')
 
     def add_segment():
         '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
@@ -346,25 +374,51 @@ def Entries():
         global G
         e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
         e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
-        e_seg = f"{e_name_from}{e_name_to}" '''Creamos el nombre del segmento (vector) 
-        a partir del nodo destino  del nodo final'''
-        e_seg1 = f"{e_name_to}{e_name_from}" '''Creamos el otro vector (AB - BA)'''
-
+        if not e_name_from or not e_name_to:
+            print("Error: You must write both nodes first.")
+            return
+        node_from = SearchNode(G, e_name_from)
+        node_to = SearchNode(G, e_name_to)
+        if not node_from:
+            print(f"Error:The node '{e_name_from}' doesn't exists. Create it first.")
+            return
+        if not node_to:
+            print(f"Error: The node '{e_name_to}' doesn't exists. Create it first.")
+            return
+        e_seg = f"{e_name_from}{e_name_to}"
+        '''Creamos el nombre del segmento (vector) 
+                a partir del nodo destino  del nodo final'''
+        e_seg1 = f"{e_name_to}{e_name_from}"
+        '''Creamos el otro vector (AB - BA)'''
+        print(e_seg)
+        segment_exists = any(
+            (s.name == e_seg or s.name == e_seg1)
+            for s in G.segments)
+        if segment_exists:
+            print(f"Error: It already exists a segment between {e_name_from} and {e_name_to}")
+            return
         AddSegment(G, e_seg, e_name_from, e_name_to)
         AddSegment(G, e_seg1, e_name_to, e_name_from)
         '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
-
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
         '''Limpiamos las entradas de texto'''
-
-        # Plot the updated graph
         Plot(G)
 
     def delete_node():
         '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
         global G
-        DeleteNode(G, e_delete_n.get())
+        node_name = e_delete_n.get().strip()
+        if not node_name:
+            print("Error: You must write the name of the node you want to delete.")
+            e_delete_n.delete(0, 'end')
+            return
+        if not SearchNode(G, node_name):
+            print(f"Error: The node '{node_name}' doesn't exists.")
+            e_delete_n.delete(0, 'end')
+            return
+        DeleteNode(G, node_name)
+        print(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
         Plot(G)
 
@@ -372,8 +426,22 @@ def Entries():
         '''La misma función que delete_node, solo que en lugar de eliminar
         nodos esta función elimina segmentos'''
         global G
-        e_delete_s.get()
-        DeleteSegment(G, e_delete_s.get())
+        segment_name = e_delete_s.get().strip()
+        if not segment_name:
+            print("Error: You must write the name of the segment you want to delete.")
+            e_delete_s.delete(0, 'end')
+            return
+        segment_to_delete = None
+        for seg in G.segments:
+            if seg.name == segment_name or seg.name == segment_name[::-1]:
+                segment_to_delete = seg
+                break
+        if not segment_to_delete:
+            print(f"Error: It doesn't exists any segment called '{segment_name}'")
+            e_delete_s.delete(0, 'end')
+            return
+        DeleteSegment(G, segment_to_delete.name)
+        print(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         Plot(G)
 

@@ -56,12 +56,12 @@ def SearchSegment(g, Vector):
     Esta función buscará segmentos en el grafo para retornarlo si lo encuentra
     o retornar None si no lo hace. Es esencialmente lo mismo que SearchNode
     '''
-    b = True
+    a = True
     for segment in g.segments:
         if segment.name == Vector:
-            b = False
+            a = False
             return segment
-        if b:
+        if a:
             return None
 
 def GetClosest (g, x:float,y:float):
@@ -163,9 +163,8 @@ def DeleteNode(g, node_name):
         for n in g.nodes:
             if node in n.neighbors:
                 n.neighbors.remove(node)
-        return True
+                return True
     else:
-        print ('No encontrado')
         return False
 
 def DeleteSegment(g, Vector):
