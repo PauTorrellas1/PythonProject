@@ -3,6 +3,45 @@ from graph import *
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 
+
+with open('GraphData.csv', 'r') as info:
+    M_Graph = Graph
+    for line in info:
+        line = line.strip()
+        if not line:
+            continue
+
+        parts = line.split(',')
+        if len(parts) < 4:
+            print(f"Línea ignorada (formato incorrecto): {line}")
+            continue
+
+        try:
+            if parts[0] == "N":
+                AddNode(M_Graph, Node(parts[1], int(parts[2]), int(parts[3])))
+            elif parts[0] == "S":
+                AddSegment(M_Graph, parts[1], parts[2], parts[3])
+        except (ValueError, IndexError) as e:
+            print(f"Error procesando línea: {line} - {str(e)}")
+    '''
+    M_Graph = Graph
+    info_lines = info.readlines()
+    nodes_info = []
+    segments_info = []
+    i_info = 0
+    while i_info < len(info_lines):
+        info_lines[i_info] = info_lines[i_info].strip()
+        info_lines1 = info_lines[i_info].split(',')
+        if str(info_lines1[0]) == 'N':
+            AddNode(M_Graph, Node(str(info_lines[1]), int(info_lines1[2]), int(info_lines1[3])))
+        else:
+            AddSegment(M_Graph, str(info_lines[1]), int(info_lines1[2]), int(info_lines1[3]))
+        i_info += 1
+        '''
+Plot(M_Graph)
+
+
+
 def CreateGraph_1 ():
     G = Graph()
     AddNode(G, Node("A",1,20))
@@ -52,9 +91,19 @@ def show_graph():
 def show_graph_1():
     Plot(G)
 
+def create_graph():
+    M = G
+
+    SearchNode(G, name)
+    DeleteNode(M, name)
+    M = Graph()
+    Plot(M)
+    return M
+
 root = tk.Tk()
 G = CreateGraph_1()
 root.title("GUI")
+
 
 def button1():
     button1 = tk.Button(root,
@@ -106,8 +155,34 @@ def button2():
                        wraplength=100)
 
     button2.grid(row=1, column=1)
+def button3():
+    button3 = tk.Button(root,
+                       text="Crete new graph",
+                       command=create_graph,
+                       activebackground="blue",
+                       activeforeground="white",
+                       anchor="center",
+                       bd=3,
+                       bg="lightgray",
+                       cursor="hand2",
+                       disabledforeground="gray",
+                       fg="black",
+                       font=("Arial", 12),
+                       height=2,
+                       highlightbackground="black",
+                       highlightcolor="green",
+                       highlightthickness=2,
+                       justify="center",
+                       overrelief="raised",
+                       padx=10,
+                       pady=5,
+                       width=15,
+                       wraplength=100)
+
+    button3.grid(row=2, column=1)
 button1()
 button2()
+button3()
 
 def Entries():
     tk.Label(root, text="File Name").grid(row=0, column=2)
@@ -120,6 +195,7 @@ def Entries():
     tk.Label(root, text="Delete Node").grid(row=9, column=2)
     tk.Label(root, text='Delete segment').grid(row=11, column=2)
 
+
     e1 = tk.Entry(root) #Primer entry
     e2 = tk.Entry(root) #Segundo entry
     e_name = tk.Entry(root) #New_node nombre
@@ -129,7 +205,7 @@ def Entries():
     e_to = tk.Entry(root) #Destino new_segment
     e_seg = tk.Entry(root) #??
     e_delete_n = tk.Entry(root) #Delete node
-    e_delete_s = tk.Entry(root) #Delete segments
+    e_delete_s = tk.Entry(root) #Delete origin segment
 
     e1.grid(row=0, column=3)
     #e2.grid(row=1, column=3)
@@ -143,6 +219,7 @@ def Entries():
 
     def entry1():
         G = read_file(e1.get())
+        e1.delete(0, 'end')
         Plot(G)
 
     def entry2():
@@ -154,22 +231,33 @@ def Entries():
         name = e_name.get()
         x = float(e_x.get())
         y = float(e_y.get())
-        AddNode(G, Node(name, x, y))
-        Plot(G)
+        if SearchNode(G, name):
+            print('Ese nodo ya existe, escribe otro distinto')
+        else:
+            AddNode(G, Node(name, x, y))
+            Plot(G)
+            e_name.delete(0, 'end')
+            e_x.delete(0, 'end')
+            e_y.delete(0, 'end')
 
     def add_segment():
         global G
         AddSegment(G, e_seg.get(), e_from.get(), e_to.get())
-        Plot(G)
-
-    def delete_segment():
-        global G
-        DeleteSegment(G, e_delete_s.get())
+        e_to.delete(0, 'end')
+        e_from.delete(0, 'end')
         Plot(G)
 
     def delete_node():
         global G
         DeleteNode(G, e_delete_n.get())
+        e_delete_n.delete(0, 'end')
+        Plot(G)
+
+    def delete_segment():
+        global G
+        e_delete_s.get()
+        DeleteSegment(G, e_delete_s.get())
+        e_delete_s.delete(0, 'end')
         Plot(G)
 
     def button3():
@@ -235,11 +323,11 @@ def Entries():
     tk.Button(root, text="Add Segment",
               command=add_segment, cursor="hand2").grid(row=8, column=3)
 
-    tk.Button(root, text="Delete",
+    tk.Button(root, text="Delete Node",
               command=delete_node, cursor="hand2").grid(row=10, column=3)
 
-    tk.Button(root, text='Delete',
-              command=delete_segment, cursor='hand2').grid(row=12, column=3)
+    tk.Button(root, text='Delete Segment',
+              command=delete_segment, cursor='hand2').grid(row=13, column=3)
     
 Entries()
 

@@ -17,10 +17,10 @@ def AddNode(g,n):
         b = False
     elif n not in g.nodes:
         g.nodes.append(n)
-        b =True
+        b = True
     else:
         print("ERROR(AddNode)")
-        b=False
+        b = False
     return b
 
 def SearchNode(g,name):
@@ -51,14 +51,14 @@ def AddSegment(g, Vector:str, nOrigin, nDestination):
         print("node not valid")
         return False
 
-def SearchSegment(g, vector):
+def SearchSegment(g, Vector):
     '''''
     Esta función buscara segmentos en el grafo para retornarlo si lo encuentra
     o retornar None si no lo hace. Es esencialmente lo mismo que SearchNode
     '''
     b = True
     for segment in g.segments:
-        if segment.name == vector:
+        if segment.name == Vector:
             b = False
             return segment
         if b:
@@ -162,11 +162,11 @@ def DeleteNode(g, node_name):
         print ('No encontrado')
         return False
 
-def DeleteSegment(g, segment_name):
-    segment = SearchSegment(g, segment_name)
-    if segment:
-        g.segments.remove(segment)
-        return True
-    else:
-        print('Segmento no encontrado')
+def DeleteSegment(g, Vector):
+    segments_to_remove = [s for s in g.segments if s.name in (Vector, Vector[::-1])]
+    SearchSegment(g, Vector)
+    if not segments_to_remove:
+        print('No encontrado')
         return False
+    for segment in segments_to_remove:
+        g.segments.remove(segment)
