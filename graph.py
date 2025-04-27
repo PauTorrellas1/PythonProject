@@ -4,8 +4,8 @@ import matplotlib.pyplot as p
 
 class Graph:
     def __init__(self):
-        self.nodes=[]
-        self.segments=[]
+        self.nodes = []
+        self.segments = []
 
 
 def AddNode(g,n):
