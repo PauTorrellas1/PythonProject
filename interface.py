@@ -391,7 +391,6 @@ def Entries():
                 a partir del nodo destino  del nodo final'''
         e_seg1 = f"{e_name_to}{e_name_from}"
         '''Creamos el otro vector (AB - BA)'''
-        print(e_seg)
         segment_exists = any(
             (s.name == e_seg or s.name == e_seg1)
             for s in G.segments)
