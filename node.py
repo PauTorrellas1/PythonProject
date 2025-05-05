@@ -27,4 +27,4 @@ def Distance(n1, n2):
     """
     dx = n1.x - n2.x
     dy = n1.y - n2.y
-    return math.sqrt(dx ** 2 + dy ** 2)
+    return round(math.sqrt(dx ** 2 + dy ** 2), 2)

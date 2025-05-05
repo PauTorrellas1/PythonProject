@@ -44,6 +44,47 @@ def CreateGraph_1 ():
     return G
 print ("Probando el grafo...")
 
+
+def show_new_graph():
+    '''Embed the graph plot inside the Tkinter GUI'''
+    global G
+
+    # Clear previous plot (if any)
+    for widget in root.winfo_children():
+        if isinstance(widget, FigureCanvasTkAgg):
+            widget.destroy()
+
+    # Create a new figure
+    fig = Figure(figsize=(6, 4), dpi=100)
+    ax = fig.add_subplot(111)
+
+    # Plot the graph
+    for segment in G.segments:
+        x_vals = [segment.origin.x, segment.destination.x]
+        y_vals = [segment.origin.y, segment.destination.y]
+        ax.plot(x_vals, y_vals, 'b-', linewidth=1)
+        ax.text(
+            (x_vals[0] + x_vals[1]) / 2,
+            (y_vals[0] + y_vals[1]) / 2,
+            segment.cost,
+            fontsize=8
+        )
+
+    # Plot nodes
+    for node in G.nodes:
+        ax.plot(node.x, node.y, 'ro', markersize=8)
+        ax.text(node.x, node.y, node.name, fontsize=10)
+
+    # Set labels and grid
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.grid(True)
+
+    # Embed the plot in Tkinter
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas.draw()
+    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
+
 def show_graph():
     '''Mostramos el gráfico original con los datos proporcionados arriba'''
     G = CreateGraph_1()
@@ -115,6 +156,7 @@ def show_neighbors():
     root = tk.Tk()
     root.title('Node Neighbors Viewer')
 
+
     def Entries_neighbors():
         '''Aquí escribiremos el nombre del nodo del cual querámos analizar sus vecinos'''
         tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
@@ -135,7 +177,7 @@ def show_neighbors():
                 print("Information: The introduced node doesn't have any neighbors")
                 root.destroy()
                 return
-            PlotNode(G, node_name)
+            show_new_graph()
             root.destroy()
         tk.Button(root, text='Search Node',
                   command=Add_neighbors_node,
@@ -149,6 +191,7 @@ def show_neighbors():
 root = tk.Tk()
 G = CreateGraph_1()
 root.title("GUI")
+show_new_graph()
 
 
 def button1():
@@ -364,7 +407,7 @@ def Entries():
             print(f'Error: The node "{name}" already exists')
             return
         AddNode(G, Node(name, x, y))
-        Plot(G)
+        show_new_graph()
         e_name.delete(0, 'end')
         e_x.delete(0, 'end')
         e_y.delete(0, 'end')
@@ -403,7 +446,7 @@ def Entries():
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
         '''Limpiamos las entradas de texto'''
-        Plot(G)
+        show_new_graph()
 
     def delete_node():
         '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
@@ -420,7 +463,7 @@ def Entries():
         DeleteNode(G, node_name)
         print(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
-        Plot(G)
+        show_new_graph()
 
     def delete_segment():
         '''La misma función que delete_node, solo que en lugar de eliminar
@@ -443,7 +486,7 @@ def Entries():
         DeleteSegment(G, segment_to_delete.name)
         print(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
-        Plot(G)
+        show_new_graph()
 
     def button3():
         '''Botón de entry para crear el gráfico a partir de un documento de texto'''
@@ -513,6 +556,7 @@ def Entries():
               command=delete_segment, cursor='hand2').grid(row=13, column=3)
     '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
     se transforma en una mano (hand2) al pasar por encima'''
+    root.geometry('1200x600')
 Entries()
 
 root.mainloop()
