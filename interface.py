@@ -44,10 +44,9 @@ def CreateGraph_1 ():
     return G
 print ("Probando el grafo...")
 
-
 def show_new_graph():
     '''Embed the graph plot inside the Tkinter GUI'''
-    global G
+    global G, fig, ax
 
     # Clear previous plot (if any)
     for widget in root.winfo_children():
@@ -58,7 +57,7 @@ def show_new_graph():
     fig = Figure(figsize=(6, 4), dpi=100)
     ax = fig.add_subplot(111)
 
-    # Plot the graph
+    # Plot the graph (default style)
     for segment in G.segments:
         x_vals = [segment.origin.x, segment.destination.x]
         y_vals = [segment.origin.y, segment.destination.y]
@@ -70,7 +69,7 @@ def show_new_graph():
             fontsize=8
         )
 
-    # Plot nodes
+    # Plot nodes (default style)
     for node in G.nodes:
         ax.plot(node.x, node.y, 'ro', markersize=8)
         ax.text(node.x, node.y, node.name, fontsize=10)
@@ -151,10 +150,18 @@ def print_graph_info():
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
 
+
 def show_neighbors():
-    '''Esta función muestra los vecinos del nodo que queramos '''
-    root = tk.Tk()
-    root.title('Node Neighbors Viewer')
+    '''Add input field and button to search for neighbors'''
+    # Clear previous widgets (if needed)
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column") == 2 or widget.grid_info().get("column") == 3:
+            widget.destroy()
+
+    # Add input field and button
+    tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
+    e_name = tk.Entry(root)
+    e_name.grid(row=1, column=3)
 
 
     def Entries_neighbors():
@@ -164,24 +171,73 @@ def show_neighbors():
         e_name.grid(row=1, column=3)
 
         def Add_neighbors_node():
-            '''Mostramos todos los nodos vecinos del nodo escogido'''
+            '''Highlight the selected node and its neighbors in the main graph'''
+            global G, fig, ax
+
             node_name = e_name.get().strip()
             if not node_name:
                 print("Error: You must enter a node name")
                 return
+
             node = SearchNode(G, node_name)
             if not node:
                 print(f"Error: Node '{node_name}' doesn't exist")
                 return
+
             if not node.neighbors:
                 print("Information: The introduced node doesn't have any neighbors")
-                root.destroy()
                 return
-            show_new_graph()
-            root.destroy()
-        tk.Button(root, text='Search Node',
-                  command=Add_neighbors_node,
-                  cursor='hand2').grid(row=13, column=3)
+
+            # Clear the current plot
+            ax.clear()
+
+            # Replot all segments (in gray for non-neighbors)
+            for segment in G.segments:
+                x_vals = [segment.origin.x, segment.destination.x]
+                y_vals = [segment.origin.y, segment.destination.y]
+                ax.plot(x_vals, y_vals, 'gray', linewidth=1, alpha=0.5)
+                ax.text(
+                    (x_vals[0] + x_vals[1]) / 2,
+                    (y_vals[0] + y_vals[1]) / 2,
+                    segment.cost,
+                    fontsize=8
+                )
+
+            # Highlight segments connected to the selected node (in blue)
+            for neighbor in node.neighbors:
+                seg = next((s for s in G.segments if
+                            (s.origin == node and s.destination == neighbor) or
+                            (s.origin == neighbor and s.destination == node)), None)
+                if seg:
+                    x_vals = [seg.origin.x, seg.destination.x]
+                    y_vals = [seg.origin.y, seg.destination.y]
+                    ax.plot(x_vals, y_vals, 'b-', linewidth=2)
+
+            # Replot all nodes (in gray for non-neighbors)
+            for n in G.nodes:
+                ax.plot(n.x, n.y, 'o', color='gray', markersize=8)
+                ax.text(n.x, n.y, n.name, fontsize=10, color='gray')
+
+            # Highlight the selected node (in red)
+            ax.plot(node.x, node.y, 'ro', markersize=10)
+            ax.text(node.x, node.y, node.name, fontsize=10, color='blue')
+
+            # Highlight neighbors (in blue)
+            for neighbor in node.neighbors:
+                ax.plot(neighbor.x, neighbor.y, 'bo', markersize=8)
+                ax.text(neighbor.x, neighbor.y, neighbor.name, fontsize=10, color='blue')
+
+            # Refresh the canvas
+            canvas = FigureCanvasTkAgg(fig, master=root)
+            canvas.draw()
+            canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
+
+        tk.Button(
+            root,
+            text='Search Node',
+            command=Add_neighbors_node,
+            cursor='hand2'
+        ).grid(row=2, column=3)
 
     Entries_neighbors()
     root.mainloop()
