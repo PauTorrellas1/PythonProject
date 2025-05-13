@@ -1,6 +1,91 @@
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 from Create_New_Graph import *
+import tkinter as tk
+from tkinter import messagebox
+
+root = tk.Tk()
+'''Hay que añadir interactividad en el gráfico'''
+'''No destruir el gráfico'''
+'''create new graph falta interfaz'''
+message_label = None
+# Add a message display area at the bottom of the GUI
+import threading
+
+# Global variables
+message_label = None
+clear_timer = None
+
+
+def create_message_area():
+    """Create the message display area at the bottom of the GUI"""
+    global message_label
+
+    message_frame = tk.Frame(root)
+    message_frame.grid(row=20, column=1, columnspan=5, sticky="ew", padx=10, pady=5)
+
+    message_label = tk.Label(
+        message_frame,
+        text="",
+        fg="black",
+        wraplength=1000,
+        justify="left",
+        anchor="w"
+    )
+    message_label.pack(fill="x", expand=True)
+
+
+def clear_message(delay=0):
+    """Clear the message after a delay"""
+
+    def clear():
+        message_label.config(text="")
+
+    global clear_timer
+
+    # Cancel any pending clear operation
+    if clear_timer:
+        clear_timer.cancel()
+
+    if delay > 0:
+        clear_timer = threading.Timer(delay, clear)
+        clear_timer.start()
+    else:
+        clear()
+
+
+def show_message(message, is_error=False, persistent=False):
+    """Display a message in the GUI message area"""
+    global message_label
+
+    # Create message area if it doesn't exist
+    if message_label is None:
+        create_message_area()
+
+    # Clear previous message immediately
+    clear_message()
+
+    # Format the message
+    if is_error:
+        formatted_message = f"Error: {message}"
+        message_label.config(fg="red")
+        messagebox.showerror("Error", message)
+    else:
+        formatted_message = message
+        message_label.config(fg="black")
+
+    # Show the new message
+    message_label.config(text=formatted_message)
+    message_label.update_idletasks()
+
+    # Set up automatic clearing for non-persistent messages
+    if not persistent:
+        if is_error:
+            # Keep error messages for 5 seconds
+            clear_message(delay=5)
+        else:
+            # Keep success messages for 3 seconds
+            clear_message(delay=3)
 
 def CreateGraph_1 ():
     G = Graph()
@@ -42,7 +127,7 @@ def CreateGraph_1 ():
     AddSegment(G, "LK","L","K")
     AddSegment(G, "LF","L","F")
     return G
-print ("Probando el grafo...")
+show_message("Probando el grafo...")
 
 def show_new_graph():
     '''Embed the graph plot inside the Tkinter GUI'''
@@ -104,12 +189,12 @@ def print_graph_info():
                 for node in G.nodes:
                     graph_info.write(f'N,{node.name},{node.x},{node.y}\n')
             else:
-                print('There are not any nodes in the graph')
+                show_message('There are not any nodes in the graph', is_error=True)
             if hasattr(G, 'segments') and G.segments:
                 for segment in G.segments:
                     graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
             else:
-                print('There are not any segments in the graph')
+                show_message('There are not any segments in the graph', is_error=True)
 
     global G
     info_window = tk.Toplevel(root)
@@ -152,102 +237,266 @@ def print_graph_info():
 
 
 def show_neighbors():
-    '''Add input field and button to search for neighbors'''
-    # Clear previous widgets (if needed)
+    '''Show only the neighbor search interface'''
+    # Clear ALL widgets from the right panel (columns 2-4)
     for widget in root.winfo_children():
-        if widget.grid_info().get("column") == 2 or widget.grid_info().get("column") == 3:
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
 
-    # Add input field and button
-    tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
+    # Create neighbor search UI
+    tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_name = tk.Entry(root)
-    e_name.grid(row=1, column=3)
+    e_name.grid(row=0, column=3)
+
+    search_btn = tk.Button(
+        root,
+        text='Show Neighbors',
+        command=lambda: highlight_neighbors(e_name.get()),
+        cursor='hand2'
+    )
+    search_btn.grid(row=0, column=4)
 
 
-    def Entries_neighbors():
-        '''Aquí escribiremos el nombre del nodo del cual querámos analizar sus vecinos'''
-        tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
-        e_name = tk.Entry(root)
-        e_name.grid(row=1, column=3)
+def highlight_neighbors(node_name):
+    '''Highlight neighbors in main graph'''
+    global G, fig, ax
 
-        def Add_neighbors_node():
-            '''Highlight the selected node and its neighbors in the main graph'''
-            global G, fig, ax
+    node_name = node_name.strip()
+    if not node_name:
+        show_message("Enter a node name", is_error=True)
+        return
 
-            node_name = e_name.get().strip()
-            if not node_name:
-                print("Error: You must enter a node name")
-                return
+    node = SearchNode(G, node_name)
+    if not node:
+        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+        return
 
-            node = SearchNode(G, node_name)
-            if not node:
-                print(f"Error: Node '{node_name}' doesn't exist")
-                return
+    if not node.neighbors:
+        show_message("Information: Node has no neighbors", is_error=True)
+        return
 
-            if not node.neighbors:
-                print("Information: The introduced node doesn't have any neighbors")
-                return
+    # Clear and redraw graph with highlights
+    ax.clear()
 
-            # Clear the current plot
-            ax.clear()
+    # Draw all segments (gray)
+    for seg in G.segments:
+        x = [seg.origin.x, seg.destination.x]
+        y = [seg.origin.y, seg.destination.y]
+        ax.plot(x, y, 'gray', alpha=0.3)
 
-            # Replot all segments (in gray for non-neighbors)
-            for segment in G.segments:
-                x_vals = [segment.origin.x, segment.destination.x]
-                y_vals = [segment.origin.y, segment.destination.y]
-                ax.plot(x_vals, y_vals, 'gray', linewidth=1, alpha=0.5)
-                ax.text(
-                    (x_vals[0] + x_vals[1]) / 2,
-                    (y_vals[0] + y_vals[1]) / 2,
-                    segment.cost,
-                    fontsize=8
-                )
+    # Highlight neighbor connections (blue)
+    for neighbor in node.neighbors:
+        seg = next((s for s in G.segments if
+                    {s.origin, s.destination} == {node, neighbor}), None)
+        if seg:
+            x = [seg.origin.x, seg.destination.x]
+            y = [seg.origin.y, seg.destination.y]
+            ax.plot(x, y, 'b-', linewidth=2)
 
-            # Highlight segments connected to the selected node (in blue)
-            for neighbor in node.neighbors:
-                seg = next((s for s in G.segments if
-                            (s.origin == node and s.destination == neighbor) or
-                            (s.origin == neighbor and s.destination == node)), None)
-                if seg:
-                    x_vals = [seg.origin.x, seg.destination.x]
-                    y_vals = [seg.origin.y, seg.destination.y]
-                    ax.plot(x_vals, y_vals, 'b-', linewidth=2)
+    # Draw all nodes (gray)
+    for n in G.nodes:
+        ax.plot(n.x, n.y, 'o', color='gray', markersize=8)
+        ax.text(n.x, n.y, n.name, color='gray')
 
-            # Replot all nodes (in gray for non-neighbors)
-            for n in G.nodes:
-                ax.plot(n.x, n.y, 'o', color='gray', markersize=8)
-                ax.text(n.x, n.y, n.name, fontsize=10, color='gray')
+    # Highlight selected node (red)
+    ax.plot(node.x, node.y, 'ro', markersize=10)
+    ax.text(node.x, node.y, node.name, color='red', weight='bold')
 
-            # Highlight the selected node (in red)
-            ax.plot(node.x, node.y, 'ro', markersize=10)
-            ax.text(node.x, node.y, node.name, fontsize=10, color='blue')
+    # Highlight neighbors (blue)
+    for neighbor in node.neighbors:
+        ax.plot(neighbor.x, neighbor.y, 'bo', markersize=8)
+        ax.text(neighbor.x, neighbor.y, neighbor.name, color='blue')
 
-            # Highlight neighbors (in blue)
-            for neighbor in node.neighbors:
-                ax.plot(neighbor.x, neighbor.y, 'bo', markersize=8)
-                ax.text(neighbor.x, neighbor.y, neighbor.name, fontsize=10, color='blue')
+    # Refresh plot
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas.draw()
+    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
-            # Refresh the canvas
-            canvas = FigureCanvasTkAgg(fig, master=root)
-            canvas.draw()
-            canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
-
-        tk.Button(
-            root,
-            text='Search Node',
-            command=Add_neighbors_node,
-            cursor='hand2'
-        ).grid(row=2, column=3)
-
-    Entries_neighbors()
-    root.mainloop()
-
-    Entries_neighbors()
-
-root = tk.Tk()
 G = CreateGraph_1()
 root.title("GUI")
+create_message_area()
 show_new_graph()
+
+
+def create_new_graph():
+    '''Creamos un nuevo gráfico en blanco'''
+    global G, fig, ax
+
+    # Create a new empty graph
+    G = Graph()
+
+    # Clear the right panel (graph area)
+    for widget in root.winfo_children():
+        if isinstance(widget, FigureCanvasTkAgg):
+            widget.destroy()
+
+    # Clear the input fields (columns 2-4)
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+            widget.destroy()
+
+    # Create and store the entry widgets
+    e_name = tk.Entry(root)
+    e_x = tk.Entry(root)
+    e_y = tk.Entry(root)
+    e_from = tk.Entry(root)
+    e_to = tk.Entry(root)
+    e_delete_n = tk.Entry(root)
+    e_delete_s = tk.Entry(root)
+
+    # Grid the labels and entries
+    tk.Label(root, text="New node name").grid(row=2, column=2)
+    tk.Label(root, text="X").grid(row=3, column=2)
+    tk.Label(root, text="Y").grid(row=4, column=2)
+    tk.Label(root, text="From").grid(row=6, column=2)
+    tk.Label(root, text="To").grid(row=7, column=2)
+    tk.Label(root, text="Delete Node").grid(row=9, column=2)
+    tk.Label(root, text='Delete segment').grid(row=12, column=2)
+
+    e_name.grid(row=2, column=3)
+    e_x.grid(row=3, column=3)
+    e_y.grid(row=4, column=3)
+    e_from.grid(row=6, column=3)
+    e_to.grid(row=7, column=3)
+    e_delete_n.grid(row=9, column=3)
+    e_delete_s.grid(row=12, column=3)
+
+    # Create buttons with proper command binding
+    tk.Button(root, text="Add Node",
+              command=lambda: add_node_to_new_graph(e_name, e_x, e_y),
+              cursor="hand2").grid(row=5, column=3)
+
+    tk.Button(root, text="Add Segment",
+              command=lambda: add_segment_to_new_graph(e_from, e_to),
+              cursor="hand2").grid(row=8, column=3)
+
+    tk.Button(root, text="Delete Node",
+              command=lambda: delete_node_to_new_graph(e_delete_n),
+              cursor="hand2").grid(row=11, column=3)
+
+    tk.Button(root, text='Delete Segment',
+              command=lambda: delete_segment_to_new_graph(e_delete_s),
+              cursor='hand2').grid(row=15, column=3)
+
+    # Show the empty graph
+    show_new_graph()
+
+
+def add_node_to_new_graph(name_entry, x_entry, y_entry):
+    '''Function to add node to the new graph'''
+    global G
+    name = name_entry.get().strip()
+    x_str = x_entry.get().strip()
+    y_str = y_entry.get().strip()
+
+    if not name or not x_str or not y_str:
+        show_message("All the entries must be filled", is_error=True)
+        return
+    try:
+        x = float(x_str)
+        y = float(y_str)
+    except ValueError:
+        show_message("The coordinates must be numbers", is_error=True)
+        return
+    if SearchNode(G, name):
+        show_message(f'The node "{name}" already exists', is_error=True)
+        return
+
+    AddNode(G, Node(name, x, y))
+    show_new_graph()
+    name_entry.delete(0, 'end')
+    x_entry.delete(0, 'end')
+    y_entry.delete(0, 'end')
+
+
+# Similar functions for other operations
+def add_segment_to_new_graph(from_entry, to_entry):
+    global G
+    from_node_name = from_entry.get().strip()
+    to_node_name = to_entry.get().strip()
+
+    if not from_node_name or not to_node_name:
+        show_message("Both nodes must be specified", is_error=True)
+        return
+
+    # Check if nodes exist
+    from_node = SearchNode(G, from_node_name)
+    to_node = SearchNode(G, to_node_name)
+
+    if not from_node:
+        show_message(f"Node '{from_node_name}' doesn't exist", is_error=True)
+        return
+    if not to_node:
+        show_message(f"Node '{to_node_name}' doesn't exist", is_error=True)
+        return
+
+    e_seg = f"{from_node_name}{to_node_name}"
+    e_seg1 = f"{to_node_name}{from_node_name}"
+
+    # Check if segment already exists
+    segment_exists = any(
+        (s.name == e_seg or s.name == e_seg1)
+        for s in G.segments)
+
+    if segment_exists:
+        show_message(f"Segment between {from_node_name} and {to_node_name} already exists", is_error=True)
+        return
+
+    # Add the segments
+    AddSegment(G, e_seg, from_node_name, to_node_name)
+    AddSegment(G, e_seg1, to_node_name, from_node_name)
+
+    # Clear entries and update the graph
+    from_entry.delete(0, 'end')
+    to_entry.delete(0, 'end')
+    show_new_graph()
+
+def delete_node_to_new_graph(entry_widget):
+    '''Delete a node from the new graph'''
+    global G
+
+    node_name = entry_widget.get().strip()
+
+    if not node_name:
+        show_message("You must enter a node name to delete", is_error=True)
+        return
+
+    # Search for the node
+    node_to_delete = SearchNode(G, node_name)
+
+    if not node_to_delete:
+        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+        entry_widget.delete(0, 'end')
+        return
+
+    # Delete the node
+    DeleteNode(G, node_name)
+    show_message(f"Node '{node_name}' deleted successfully")
+
+    # Clear the entry and update the graph display
+    entry_widget.delete(0, 'end')
+    show_new_graph()
+
+def delete_segment_to_new_graph(e_delete_s):
+    '''Eliminamos un segmento de nuestro gráfico'''
+    segment_name = e_delete_s.get().strip()
+    if not segment_name:
+        show_message("You must write the name of the segment you want to delete.", is_error=True)
+        e_delete_s.delete(0, 'end')
+        return
+    segment_to_delete = None
+    for seg in G.segments:
+        if seg.name == segment_name or seg.name == segment_name[::-1]:
+            segment_to_delete = seg
+            break
+    if not segment_to_delete:
+        show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
+        e_delete_s.delete(0, 'end')
+        return
+    DeleteSegment(G, segment_to_delete.name)
+    show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
+    e_delete_s.delete(0, 'end')
+    show_new_graph()
 
 
 def button1():
@@ -435,9 +684,9 @@ def Entries():
             G = read_file(e1.get())
             Plot(G)
         except FileNotFoundError:
-            print(f"Error: Archive not found")
+            show_message(f"Archive not found", is_error=True)
         except Exception as e:
-            print(f"Another error: {e}")
+            show_message(f"{e}", is_error=True)
 
     '''def entry2():
         G = CreateGraph_1()
@@ -451,16 +700,16 @@ def Entries():
         x_str = e_x.get().strip()
         y_str = e_y.get().strip()
         if not name or not x_str or not y_str:
-            print("Error: All the entries must be filled")
+            show_message("All the entries must be filled", is_error=True)
             return
         try:
             x = float(x_str)
             y = float(y_str)
         except ValueError:
-            print("Error: The coordinates must be numbers, they can't be letters or weird symbols")
+            show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
             return
         if SearchNode(G, name):
-            print(f'Error: The node "{name}" already exists')
+            show_message(f'The node "{name}" already exists', is_error=True)
             return
         AddNode(G, Node(name, x, y))
         show_new_graph()
@@ -475,15 +724,15 @@ def Entries():
         e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
         e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
         if not e_name_from or not e_name_to:
-            print("Error: You must write both nodes first.")
+            show_message("You must write both nodes first.", is_error=True)
             return
         node_from = SearchNode(G, e_name_from)
         node_to = SearchNode(G, e_name_to)
         if not node_from:
-            print(f"Error:The node '{e_name_from}' doesn't exists. Create it first.")
+            show_message(f"The node '{e_name_from}' doesn't exists. Create it first.", is_error=True)
             return
         if not node_to:
-            print(f"Error: The node '{e_name_to}' doesn't exists. Create it first.")
+            show_message(f"The node '{e_name_to}' doesn't exists. Create it first.", is_error=True)
             return
         e_seg = f"{e_name_from}{e_name_to}"
         '''Creamos el nombre del segmento (vector) 
@@ -494,7 +743,7 @@ def Entries():
             (s.name == e_seg or s.name == e_seg1)
             for s in G.segments)
         if segment_exists:
-            print(f"Error: It already exists a segment between {e_name_from} and {e_name_to}")
+            show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
             return
         AddSegment(G, e_seg, e_name_from, e_name_to)
         AddSegment(G, e_seg1, e_name_to, e_name_from)
@@ -509,15 +758,15 @@ def Entries():
         global G
         node_name = e_delete_n.get().strip()
         if not node_name:
-            print("Error: You must write the name of the node you want to delete.")
+            show_message("You must write the name of the node you want to delete.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
         if not SearchNode(G, node_name):
-            print(f"Error: The node '{node_name}' doesn't exists.")
+            show_message(f"The node '{node_name}' doesn't exists.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
         DeleteNode(G, node_name)
-        print(f"The node '{node_name}' was eliminated successfully.")
+        show_message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
         show_new_graph()
 
@@ -527,7 +776,7 @@ def Entries():
         global G
         segment_name = e_delete_s.get().strip()
         if not segment_name:
-            print("Error: You must write the name of the segment you want to delete.")
+            show_message("You must write the name of the segment you want to delete.", is_error=True)
             e_delete_s.delete(0, 'end')
             return
         segment_to_delete = None
@@ -536,11 +785,11 @@ def Entries():
                 segment_to_delete = seg
                 break
         if not segment_to_delete:
-            print(f"Error: It doesn't exists any segment called '{segment_name}'")
+            show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
             e_delete_s.delete(0, 'end')
             return
         DeleteSegment(G, segment_to_delete.name)
-        print(f"Segment '{segment_to_delete.name}' deleted successfully.")
+        show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         show_new_graph()
 
