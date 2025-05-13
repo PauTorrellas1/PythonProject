@@ -9,6 +9,7 @@ import threading
 '''No destruir el gráfico'''
 '''create new graph falta interfaz'''
 root = tk.Tk()
+current_display_mode = "edited"
 message_label = None
 clear_timer = None
 
@@ -127,19 +128,16 @@ show_message("Probando el grafo...")
 
 def show_new_graph():
     '''Embed the graph plot inside the Tkinter GUI'''
-    global G, fig, ax
+    global G, fig, ax, current_display_mode
 
-    # Clear previous plot (if any)
+    # Determine which graph to show
+    display_G = original_G if current_display_mode == "original" else edited_G
     for widget in root.winfo_children():
         if isinstance(widget, FigureCanvasTkAgg):
             widget.destroy()
-
-    # Create a new figure
     fig = Figure(figsize=(6, 4), dpi=100)
     ax = fig.add_subplot(111)
-
-    # Plot the graph (default style)
-    for segment in G.segments:
+    for segment in display_G.segments:
         x_vals = [segment.origin.x, segment.destination.x]
         y_vals = [segment.origin.y, segment.destination.y]
         ax.plot(x_vals, y_vals, 'b-', linewidth=1)
@@ -147,35 +145,30 @@ def show_new_graph():
             (x_vals[0] + x_vals[1]) / 2,
             (y_vals[0] + y_vals[1]) / 2,
             segment.cost,
-            fontsize=8
-        )
-
-    # Plot nodes (default style)
-    for node in G.nodes:
+            fontsize=8)
+    for node in display_G.nodes:
         ax.plot(node.x, node.y, 'ro', markersize=8)
         ax.text(node.x, node.y, node.name, fontsize=10)
-
-    # Set labels and grid
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.grid(True)
-
-    # Embed the plot in Tkinter
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
     canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
 
 def show_graph():
     '''Mostramos el gráfico original con los datos proporcionados arriba'''
-    global original_G
-    Plot(original_G)
+    global current_display_mode
+    current_display_mode = "original"
+    show_new_graph()
     show_message("Showing original graph")
 
 def show_graph_1():
     '''Mostramos el nuevo gráfico editado con nuevos segmentos , nodos
     y con los segmentos o nodos que hayamos eliminado '''
-    global edited_G
-    Plot(edited_G)
+    global current_display_mode
+    current_display_mode = "edited"
+    show_new_graph()
     show_message("Showing edited graph")
 
 
@@ -701,7 +694,7 @@ def Entries():
     def add_node():
         '''Añadimos un nodo al gráfico, marcando el nombre del nodo
         y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
-        global G
+        global edited_G
         name = e_name.get().strip()
         x_str = e_x.get().strip()
         y_str = e_y.get().strip()
@@ -714,11 +707,11 @@ def Entries():
         except ValueError:
             show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
             return
-        if SearchNode(G, name):
+        if SearchNode(edited_G, name):
             show_message(f'The node "{name}" already exists', is_error=True)
             return
-        AddNode(G, Node(name, x, y))
-        show_new_graph()
+        AddNode(edited_G, Node(name, x, y))
+        show_graph_1()
         e_name.delete(0, 'end')
         e_x.delete(0, 'end')
         e_y.delete(0, 'end')
@@ -726,14 +719,14 @@ def Entries():
     def add_segment():
         '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
         o creados con la función de AddNode'''
-        global G
+        global edited_G
         e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
         e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
         if not e_name_from or not e_name_to:
             show_message("You must write both nodes first.", is_error=True)
             return
-        node_from = SearchNode(G, e_name_from)
-        node_to = SearchNode(G, e_name_to)
+        node_from = SearchNode(edited_G, e_name_from)
+        node_to = SearchNode(edited_G, e_name_to)
         if not node_from:
             show_message(f"The node '{e_name_from}' doesn't exists. Create it first.", is_error=True)
             return
@@ -747,46 +740,46 @@ def Entries():
         '''Creamos el otro vector (AB - BA)'''
         segment_exists = any(
             (s.name == e_seg or s.name == e_seg1)
-            for s in G.segments)
+            for s in edited_G.segments)
         if segment_exists:
             show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
             return
-        AddSegment(G, e_seg, e_name_from, e_name_to)
-        AddSegment(G, e_seg1, e_name_to, e_name_from)
+        AddSegment(edited_G, e_seg, e_name_from, e_name_to)
+        AddSegment(edited_G, e_seg1, e_name_to, e_name_from)
         '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
         '''Limpiamos las entradas de texto'''
-        show_new_graph()
+        show_graph_1()
 
     def delete_node():
         '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
-        global G
+        global edited_G
         node_name = e_delete_n.get().strip()
         if not node_name:
             show_message("You must write the name of the node you want to delete.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
-        if not SearchNode(G, node_name):
+        if not SearchNode(edited_G, node_name):
             show_message(f"The node '{node_name}' doesn't exists.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
-        DeleteNode(G, node_name)
+        DeleteNode(edited_G, node_name)
         show_message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
-        show_new_graph()
+        show_graph_1()
 
     def delete_segment():
         '''La misma función que delete_node, solo que en lugar de eliminar
         nodos esta función elimina segmentos'''
-        global G
+        global edited_G
         segment_name = e_delete_s.get().strip()
         if not segment_name:
             show_message("You must write the name of the segment you want to delete.", is_error=True)
             e_delete_s.delete(0, 'end')
             return
         segment_to_delete = None
-        for seg in G.segments:
+        for seg in edited_G.segments:
             if seg.name == segment_name or seg.name == segment_name[::-1]:
                 segment_to_delete = seg
                 break
@@ -794,10 +787,10 @@ def Entries():
             show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
             e_delete_s.delete(0, 'end')
             return
-        DeleteSegment(G, segment_to_delete.name)
+        DeleteSegment(edited_G, segment_to_delete.name)
         show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
-        show_new_graph()
+        show_graph_1()
 
     def button3():
         '''Botón de entry para crear el gráfico a partir de un documento de texto'''
