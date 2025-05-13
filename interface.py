@@ -3,16 +3,12 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolb
 from Create_New_Graph import *
 import tkinter as tk
 from tkinter import messagebox
+import threading
 
-root = tk.Tk()
 '''Hay que añadir interactividad en el gráfico'''
 '''No destruir el gráfico'''
 '''create new graph falta interfaz'''
-message_label = None
-# Add a message display area at the bottom of the GUI
-import threading
-
-# Global variables
+root = tk.Tk()
 message_label = None
 clear_timer = None
 
@@ -171,13 +167,16 @@ def show_new_graph():
 
 def show_graph():
     '''Mostramos el gráfico original con los datos proporcionados arriba'''
-    G = CreateGraph_1()
-    Plot(G)
+    global original_G
+    Plot(original_G)
+    show_message("Showing original graph")
 
 def show_graph_1():
     '''Mostramos el nuevo gráfico editado con nuevos segmentos , nodos
     y con los segmentos o nodos que hayamos eliminado '''
-    Plot(G)
+    global edited_G
+    Plot(edited_G)
+    show_message("Showing edited graph")
 
 
 def print_graph_info():
@@ -312,7 +311,9 @@ def highlight_neighbors(node_name):
     canvas.draw()
     canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
-G = CreateGraph_1()
+original_G = CreateGraph_1()
+edited_G = CreateGraph_1()  # Start with a copy of the original
+G = edited_G  # Current working graph is the edited one
 root.title("GUI")
 create_message_area()
 show_new_graph()
@@ -320,11 +321,11 @@ show_new_graph()
 
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
-    global G, fig, ax
+    global edited_G, G
+    edited_G = Graph()  # Create new empty graph
+    G = edited_G  # Set current working graph
 
-    # Create a new empty graph
-    G = Graph()
-
+    # Rest of your existing create_new_graph code...
     # Clear the right panel (graph area)
     for widget in root.winfo_children():
         if isinstance(widget, FigureCanvasTkAgg):
@@ -334,6 +335,11 @@ def create_new_graph():
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
+
+    # Rest of your create_new_graph implementation...
+    # Show the empty graph
+    show_new_graph()
+    show_message("Created new empty graph")
 
     # Create and store the entry widgets
     e_name = tk.Entry(root)
