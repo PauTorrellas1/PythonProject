@@ -1,7 +1,42 @@
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
 from Create_New_Graph import *
-
+root = tk.Tk()
+root.geometry("1350x800")
+root.title("GUI")
+plot_frame = tk.Frame(root,pady=10)
+plot_frame.grid(row=10, column=0, columnspan=10)
+def button(command,tex,row,column,abg="blue",width=None,master=root):
+    tk.Button(master=master,
+        text=tex,
+        command=command,
+        activebackground=abg,
+        activeforeground="white",
+        anchor="center",
+        bd=3,
+        bg="lightgray",
+        cursor="hand2",
+        disabledforeground="gray",
+        fg="black",
+        font=("Roboto", 12),
+        height=1,
+        highlightbackground="black",
+        highlightcolor="green",
+        highlightthickness=2,
+        justify="center",
+        overrelief="raised",
+        padx=5,
+        pady=5,
+        width=width,
+        wraplength=100).grid(row=row, column=column)
+def label(text, row, column,master=root):
+    tk.Label(master=master, text=text, padx=10,font=7).grid(row=row, column=column)
+def not_valid(row,column):
+    #not valid msg for not valid inputs
+    lb = tk.Message(root, text="Not Valid", bg='red')
+    lb.grid(row=row, column=column)
+    # noinspection PyTypeChecker
+    root.after(1000, lb.destroy)
 def CreateGraph_1 ():
     G = Graph()
     AddNode(G, Node("A",1,20))
@@ -42,7 +77,7 @@ def CreateGraph_1 ():
     AddSegment(G, "LK","L","K")
     AddSegment(G, "LF","L","F")
     return G
-print ("Probando el grafo...")
+G = CreateGraph_1()
 
 def show_new_graph():
     '''Embed the graph plot inside the Tkinter GUI'''
@@ -80,21 +115,25 @@ def show_new_graph():
     ax.grid(True)
 
     # Embed the plot in Tkinter
-    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas = FigureCanvasTkAgg(fig, master=plot_frame)
     canvas.draw()
-    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
+    canvas.get_tk_widget().grid(row=5, column=3, columnspan=20, padx=10, pady=10)
 
+plotting_frame = tk.LabelFrame(root, text="Plotting Frame")
+plotting_frame.config (width=600, height=480)
+plotting_frame.grid(row=0, column=0,columnspan=1, padx=5, pady=5,
+sticky=tk.N+ tk.E+ tk.W + tk.S)
 def show_graph():
     '''Mostramos el gráfico original con los datos proporcionados arriba'''
     G = CreateGraph_1()
-    Plot(G)
-
+    show_new_graph()
+b_original = button(lambda: show_graph(),"Show original graph",0,1,width=15,master=plotting_frame)
 def show_graph_1():
     '''Mostramos el nuevo gráfico editado con nuevos segmentos , nodos
     y con los segmentos o nodos que hayamos eliminado '''
-    Plot(G)
-
-
+    show_new_graph()
+b_edited = button(lambda: show_graph_1(),"Show edited graph",1,1,width=15,master=plotting_frame)
+b_create = button(lambda: create_new_graph(),"Crete new graph",2,1,width=15,master=plotting_frame)
 def print_graph_info():
     """Muestra todos los nodos y segmentos dentro del GUI"""
     def save_info():
@@ -111,7 +150,6 @@ def print_graph_info():
             else:
                 print('There are not any segments in the graph')
 
-    global G
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
 
@@ -149,470 +187,121 @@ def print_graph_info():
     save_button.pack(pady=9)
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
+b_save = button(lambda: print_graph_info(),"Save the information",3,1,width=15,master=plotting_frame)
 
-
-def show_neighbors():
-    '''Add input field and button to search for neighbors'''
-    # Clear previous widgets (if needed)
-    for widget in root.winfo_children():
-        if widget.grid_info().get("column") == 2 or widget.grid_info().get("column") == 3:
-            widget.destroy()
-
-    # Add input field and button
-    tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
-    e_name = tk.Entry(root)
-    e_name.grid(row=1, column=3)
-
-
-    def Entries_neighbors():
-        '''Aquí escribiremos el nombre del nodo del cual querámos analizar sus vecinos'''
-        tk.Label(root, text="Insert the node whose neighbors you want to know").grid(row=1, column=2)
-        e_name = tk.Entry(root)
-        e_name.grid(row=1, column=3)
-
-        def Add_neighbors_node():
-            '''Highlight the selected node and its neighbors in the main graph'''
-            global G, fig, ax
-
-            node_name = e_name.get().strip()
-            if not node_name:
-                print("Error: You must enter a node name")
-                return
-
-            node = SearchNode(G, node_name)
-            if not node:
-                print(f"Error: Node '{node_name}' doesn't exist")
-                return
-
-            if not node.neighbors:
-                print("Information: The introduced node doesn't have any neighbors")
-                return
-
-            # Clear the current plot
-            ax.clear()
-
-            # Replot all segments (in gray for non-neighbors)
-            for segment in G.segments:
-                x_vals = [segment.origin.x, segment.destination.x]
-                y_vals = [segment.origin.y, segment.destination.y]
-                ax.plot(x_vals, y_vals, 'gray', linewidth=1, alpha=0.5)
-                ax.text(
-                    (x_vals[0] + x_vals[1]) / 2,
-                    (y_vals[0] + y_vals[1]) / 2,
-                    segment.cost,
-                    fontsize=8
-                )
-
-            # Highlight segments connected to the selected node (in blue)
-            for neighbor in node.neighbors:
-                seg = next((s for s in G.segments if
-                            (s.origin == node and s.destination == neighbor) or
-                            (s.origin == neighbor and s.destination == node)), None)
-                if seg:
-                    x_vals = [seg.origin.x, seg.destination.x]
-                    y_vals = [seg.origin.y, seg.destination.y]
-                    ax.plot(x_vals, y_vals, 'b-', linewidth=2)
-
-            # Replot all nodes (in gray for non-neighbors)
-            for n in G.nodes:
-                ax.plot(n.x, n.y, 'o', color='gray', markersize=8)
-                ax.text(n.x, n.y, n.name, fontsize=10, color='gray')
-
-            # Highlight the selected node (in red)
-            ax.plot(node.x, node.y, 'ro', markersize=10)
-            ax.text(node.x, node.y, node.name, fontsize=10, color='blue')
-
-            # Highlight neighbors (in blue)
-            for neighbor in node.neighbors:
-                ax.plot(neighbor.x, neighbor.y, 'bo', markersize=8)
-                ax.text(neighbor.x, neighbor.y, neighbor.name, fontsize=10, color='blue')
-
-            # Refresh the canvas
-            canvas = FigureCanvasTkAgg(fig, master=root)
-            canvas.draw()
-            canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
-
-        tk.Button(
-            root,
-            text='Search Node',
-            command=Add_neighbors_node,
-            cursor='hand2'
-        ).grid(row=2, column=3)
-
-    Entries_neighbors()
-    root.mainloop()
-
-    Entries_neighbors()
-
-root = tk.Tk()
-G = CreateGraph_1()
-root.title("GUI")
-show_new_graph()
-
-
-def button1():
-    '''Mostramos el gráfico original con la información propporcionada'''
-    button1 = tk.Button(root,
-                       text="Show original graph",
-                       command=show_graph,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
-
-    button1.grid(row=0, column=1)
-def button2():
-    '''Mostramos el nuevo gráfico editado por nosotros'''
-    button2 = tk.Button(root,
-                       text="Show edited graph",
-                       command=show_graph_1,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
-
-    button2.grid(row=1, column=1)
-def button4():
-    '''Creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
-    donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
-    la ventana anterior con la diferencia que este gráfico está creado desde cero por nostros mismos'''
-    button4 = tk.Button(root,
-                       text="Crete new graph",
-                       command=create_new_graph,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
-    button4.grid(row=2, column=1)
-
-def button_save_graph_info():
-    ''''
-    Este botón pretende guardar toda la información de un gráfico creado en un documento
-    '''
-    button_save_graph_info = tk.Button(root,
-                        text="Save the information of the graph",
-                        command=print_graph_info,
-                        activebackground="blue",
-                        activeforeground="white",
-                        anchor="center",
-                        bd=3,
-                        bg="lightgray",
-                        cursor="hand2",
-                        disabledforeground="gray",
-                        fg="black",
-                        font=("Arial", 12),
-                        height=2,
-                        highlightbackground="black",
-                        highlightcolor="green",
-                        highlightthickness=2,
-                        justify="center",
-                        overrelief="raised",
-                        padx=10,
-                        pady=5,
-                        width=15,
-                        wraplength=100)
-
-    button_save_graph_info.grid(row=3, column=1)
-
-def button_show_neighbors():
-    '''Este botón pretende que se puedan observar todos los nodos vecinos de un nodo'''
-    button_show_neighbors = tk.Button(root,
-                        text="Show the neighbors of a node",
-                        command=show_neighbors,
-                        activebackground="blue",
-                        activeforeground="white",
-                        anchor="center",
-                        bd=3,
-                        bg="lightgray",
-                        cursor="hand2",
-                        disabledforeground="gray",
-                        fg="black",
-                        font=("Arial", 12),
-                        height=3,
-                        highlightbackground="black",
-                        highlightcolor="green",
-                        highlightthickness=2,
-                        justify="center",
-                        overrelief="raised",
-                        padx=10,
-                        pady=5,
-                        width=15,
-                        wraplength=100)
-
-    button_show_neighbors.grid(row=4, column=1)
-
-button1()
-button2()
-button4()
-button_save_graph_info()
-button_show_neighbors()
-
-def Entries():
-    '''Cada una de las entradas de texto que usaremos en el menú principal
-    de nuestra aplicación. si llevan tk.Label son únicamente texto,
-    mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
-    Si llevan tk.Button son botones para presionar y llevar acabo una acción o comando.'''
-    tk.Label(root, text="File Name").grid(row=0, column=2)
-    #tk.Label(root, text="Origin Name").grid(row=1, column=2)
-    tk.Label(root, text="New node name").grid(row=2, column=2)
-    tk.Label(root, text="X").grid(row=3, column=2)
-    tk.Label(root, text="Y").grid(row=4, column=2)
-    tk.Label(root, text="From").grid(row=6, column=2)
-    tk.Label(root, text="To").grid(row=7, column=2)
-    tk.Label(root, text="Delete Node").grid(row=9, column=2)
-    tk.Label(root, text='Delete segment').grid(row=11, column=2)
-
-
-    e1 = tk.Entry(root) #Primer entry
-    e2 = tk.Entry(root) #Segundo entry
-    e_name = tk.Entry(root) #New_node nombre
-    e_x = tk.Entry(root) #New_node valor x
-    e_y = tk.Entry(root) #New_node valor y
-    e_from = tk.Entry(root) #Origen new_segment
-    e_to = tk.Entry(root) #Destino new_segment
-    e_delete_n = tk.Entry(root) #Delete node
-    e_delete_s = tk.Entry(root) #Delete origin segment
-
-    e1.grid(row=0, column=3)
-    #e2.grid(row=1, column=3)
-    e_name.grid(row=2, column=3)
-    e_x.grid(row=3, column=3)
-    e_y.grid(row=4, column=3)
-    e_from.grid(row=6, column=3)
-    e_to.grid(row=7, column=3)
-    e_delete_n.grid(row=9, column=3)
-    e_delete_s.grid(row=11, column=3)
-
-    def entry1():
-        '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
-        global G
+label("File Name",0,2,master=plotting_frame)
+e1=tk.Entry(master=plotting_frame)
+e1.grid(row=0,column=3)
+def try_plot():
+    e = e1.get()
+    if e=="":
+        not_valid(0,3)
+    else:
         try:
-            G = read_file(e1.get())
-            Plot(G)
+            # Attempt to open the file
+            with open(e, 'r') as file:
+                G = read_file(e)
+                show_new_graph()
+                #custom_plot(Plot(G))
         except FileNotFoundError:
-            print(f"Error: Archive not found")
-        except Exception as e:
-            print(f"Another error: {e}")
+            not_valid(0,3)
+button(lambda: try_plot(), "Show Graph",0,4,master=plotting_frame)
 
-    '''def entry2():
-        G = CreateGraph_1()
-        PlotNode(G, e2.get())'''
-
-    def add_node():
-        '''Añadimos un nodo al gráfico, marcando el nombre del nodo
-        y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
-        global G
-        name = e_name.get().strip()
-        x_str = e_x.get().strip()
-        y_str = e_y.get().strip()
-        if not name or not x_str or not y_str:
-            print("Error: All the entries must be filled")
-            return
-        try:
-            x = float(x_str)
-            y = float(y_str)
-        except ValueError:
-            print("Error: The coordinates must be numbers, they can't be letters or weird symbols")
-            return
-        if SearchNode(G, name):
-            print(f'Error: The node "{name}" already exists')
-            return
-        AddNode(G, Node(name, x, y))
+label("Node Name",1,2,master=plotting_frame)
+e2 = tk.Entry(master=plotting_frame)
+e2.grid(row=1, column=3)
+def try_plotnode():
+    if SearchNode(G, e2.get()) is None:
+        not_valid(1, 3)
+    else:
         show_new_graph()
-        e_name.delete(0, 'end')
-        e_x.delete(0, 'end')
-        e_y.delete(0, 'end')
-
-    def add_segment():
-        '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
-        o creados con la función de AddNode'''
-        global G
-        e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
-        e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
-        if not e_name_from or not e_name_to:
-            print("Error: You must write both nodes first.")
-            return
-        node_from = SearchNode(G, e_name_from)
-        node_to = SearchNode(G, e_name_to)
-        if not node_from:
-            print(f"Error:The node '{e_name_from}' doesn't exists. Create it first.")
-            return
-        if not node_to:
-            print(f"Error: The node '{e_name_to}' doesn't exists. Create it first.")
-            return
-        e_seg = f"{e_name_from}{e_name_to}"
-        '''Creamos el nombre del segmento (vector) 
-                a partir del nodo destino  del nodo final'''
-        e_seg1 = f"{e_name_to}{e_name_from}"
-        '''Creamos el otro vector (AB - BA)'''
-        segment_exists = any(
-            (s.name == e_seg or s.name == e_seg1)
-            for s in G.segments)
-        if segment_exists:
-            print(f"Error: It already exists a segment between {e_name_from} and {e_name_to}")
-            return
-        AddSegment(G, e_seg, e_name_from, e_name_to)
-        AddSegment(G, e_seg1, e_name_to, e_name_from)
-        '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
-        e_to.delete(0, 'end')
-        e_from.delete(0, 'end')
-        '''Limpiamos las entradas de texto'''
-        show_new_graph()
-
-    def delete_node():
-        '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
-        global G
-        node_name = e_delete_n.get().strip()
-        if not node_name:
-            print("Error: You must write the name of the node you want to delete.")
-            e_delete_n.delete(0, 'end')
-            return
-        if not SearchNode(G, node_name):
-            print(f"Error: The node '{node_name}' doesn't exists.")
-            e_delete_n.delete(0, 'end')
-            return
-        DeleteNode(G, node_name)
-        print(f"The node '{node_name}' was eliminated successfully.")
-        e_delete_n.delete(0, 'end')
-        show_new_graph()
-
-    def delete_segment():
-        '''La misma función que delete_node, solo que en lugar de eliminar
-        nodos esta función elimina segmentos'''
-        global G
-        segment_name = e_delete_s.get().strip()
-        if not segment_name:
-            print("Error: You must write the name of the segment you want to delete.")
-            e_delete_s.delete(0, 'end')
-            return
-        segment_to_delete = None
-        for seg in G.segments:
-            if seg.name == segment_name or seg.name == segment_name[::-1]:
-                segment_to_delete = seg
-                break
-        if not segment_to_delete:
-            print(f"Error: It doesn't exists any segment called '{segment_name}'")
-            e_delete_s.delete(0, 'end')
-            return
-        DeleteSegment(G, segment_to_delete.name)
-        print(f"Segment '{segment_to_delete.name}' deleted successfully.")
-        e_delete_s.delete(0, 'end')
-        show_new_graph()
-
-    def button3():
-        '''Botón de entry para crear el gráfico a partir de un documento de texto'''
-        button3 = tk.Button(root,
-                            text="Entry",
-                            command=entry1,
-                            activebackground="blue",
-                            activeforeground="white",
-                            anchor="center",
-                            bd=3,
-                            bg="lightgray",
-                            cursor="hand2",
-                            disabledforeground="gray",
-                            fg="black",
-                            font=("Arial", 12),
-                            height=2,
-                            highlightbackground="black",
-                            highlightcolor="green",
-                            highlightthickness=2,
-                            justify="center",
-                            overrelief="raised",
-                            padx=10,
-                            pady=5,
-                            width=5,
-                            wraplength=100)
-
-        button3.grid(row=0, column=4)
-    '''def button4():
-        button4 = tk.Button(root,
-                            text="Entry",
-                            command=(entry2),
-                            activebackground="blue",
-                            activeforeground="white",
-                            anchor="center",
-                            bd=3,
-                            bg="lightgray",
-                            cursor="hand2",
-                            disabledforeground="gray",
-                            fg="black",
-                            font=("Arial", 12),
-                            height=2,
-                            highlightbackground="black",
-                            highlightcolor="green",
-                            highlightthickness=2,
-                            justify="center",
-                            overrelief="raised",
-                            padx=10,
-                            pady=5,
-                            width=5,
-                            wraplength=100)
-
-        button4.grid(row=1, column=4)'''
+        #custom_plot(PlotNode(G,e2.get()))
+button(try_plotnode, "Show Node", 1, 4, master=plotting_frame)
 
 
-    button3()
-    #button4()
-    #De esta manera no sale el segundo entry, innecesario por el momento
+addnode_frame = tk.LabelFrame(root, text="Add Node")
+addnode_frame.config (width=600, height=480)
+addnode_frame.grid(row=0, column=1,columnspan=1, padx=5, pady=5,
+sticky=tk.N+ tk.E+ tk.W + tk.S)
 
-    tk.Button(root,
-              text="Add Node",
-              command=add_node, cursor="hand2").grid(row=5, column=3)
-    tk.Button(root, text="Add Segment",
-              command=add_segment, cursor="hand2").grid(row=8, column=3)
-    tk.Button(root, text="Delete Node",
-              command=delete_node, cursor="hand2").grid(row=10, column=3)
-    tk.Button(root, text='Delete Segment',
-              command=delete_segment, cursor='hand2').grid(row=13, column=3)
-    '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
-    se transforma en una mano (hand2) al pasar por encima'''
-    root.geometry('1200x600')
-Entries()
+label("Name",2,5,master=plotting_frame)
+en = tk.Entry(master=plotting_frame)
+en.grid(row=2, column=6)
 
+label("X",0,5,master=plotting_frame)
+ex = tk.Entry(master=plotting_frame)
+ex.grid(row=0, column=6)
+
+label("Y",1,5,master=plotting_frame)
+ey = tk.Entry(master=plotting_frame)
+ey.grid(row=1, column=6)
+
+def try_addnode():
+    try:
+        if ex.get()!=""!=ey.get():
+            x=float(ex.get())
+            y=float(ey.get())
+            AddNode(G, Node(en.get(), x, y))
+        else:
+            not_valid(3, 6)
+    except ValueError:
+        not_valid(3, 6)
+    en.delete(0, 'end')
+    ex.delete(0, 'end')
+    ey.delete(0, 'end')
+button(lambda: try_addnode(), "Add Node", 3, 6,master=plotting_frame)
+
+
+label("From",0,7)
+e_from = tk.Entry(root)
+e_from.grid(row=0, column=8)
+
+label("To",1,7)
+e_to = tk.Entry(root)
+e_to.grid(row=1, column=8)
+
+def try_addsegment():
+    o=e_from.get()
+    d=e_to.get()
+    if SearchNode(G,o) is None or SearchNode(G,d) is None or Segment(o+d, o, d) in G.segments:
+        not_valid(2, 8)
+    else:
+        AddSegment(G, o+d, o, d)
+    e_to.delete(0, 'end')
+    e_from.delete(0, 'end')
+button(lambda: try_addsegment(), "Add Segment", 2, 8)
+
+
+label("Delete Node",0,9)
+e_delete_n = tk.Entry(root)
+e_delete_n.grid(row=0, column=10)
+def try_deletenode():
+    if SearchNode(G,e_delete_n.get().strip()) is None:
+        not_valid(0, 11)
+    else:
+        DeleteNode(G, e_delete_n.get().strip())
+    e_delete_n.delete(0, 'end')
+button(lambda: try_deletenode(), "Delete", 0, 11)
+
+label("Delete Segment",1,9)
+e_delete_s = tk.Entry(root)
+e_delete_s.grid(row=1, column=10)
+def try_deletesegment():
+    if SearchSegment(G,e_delete_s.get().strip()) is None:
+        not_valid(1, 11)
+    else:
+        DeleteSegment(G, e_delete_s.get().strip())
+    e_delete_s.delete(0, 'end')
+button(lambda: try_deletesegment(), "Delete", 1, 11)
+
+plot_frame = tk.LabelFrame(root, text="Plot Frame")
+plot_frame.config (width=600, height=480)
+plot_frame.grid(row=1, column=0,columnspan=4, padx=5, pady=5,
+sticky=tk.N+ tk.E+ tk.W + tk.S)
+
+def close():
+    p.close('all')
+    root.destroy()
+button(lambda: close(),"Exit", 0, 12,"red")
+root.protocol("WM_DELETE_WINDOW", close)
 root.mainloop()
