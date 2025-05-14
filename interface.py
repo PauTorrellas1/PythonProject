@@ -127,6 +127,8 @@ def show_new_graph():
     '''Establecemos que gráfico debe mostrar la GUI'''
     global fig, ax, canvas
     ax.clear()
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.set_axisbelow(True)
     for seg in G.segments:
         dx = seg.destination.x - seg.origin.x
         dy = seg.destination.y - seg.origin.y
