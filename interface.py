@@ -127,34 +127,29 @@ def show_new_graph():
     '''Establecemos que gráfico debe mostrar la GUI'''
     global fig, ax, canvas
     ax.clear()
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color= '#AA336A')
     ax.set_axisbelow(True)
+
     for seg in G.segments:
         dx = seg.destination.x - seg.origin.x
         dy = seg.destination.y - seg.origin.y
         length = math.sqrt(dx ** 2 + dy ** 2)
+
         if length > 0:
             dx /= length
             dy /= length
-        ax.plot([seg.origin.x, seg.destination.x],
-                [seg.origin.y, seg.destination.y],
-                '#979797', zorder=1)
-        ax.arrow(seg.origin.x, seg.origin.y,
-                 dx * 0.8 * length, dy * 0.8 * length,
-                 head_width=0.3, head_length=0.4,
-                 fc='#979797', ec='#979797',
-                 length_includes_head=True,
-                 zorder=3)
-        is_bidirectional = any(
-            s.origin == seg.destination and s.destination == seg.origin
-            for s in G.segments)
-        if is_bidirectional:
-            ax.arrow(seg.destination.x, seg.destination.y,
-                     -dx * 0.8 * length, -dy * 0.8 * length,
-                     head_width=0.3, head_length=0.4,
-                     fc='#979797', ec='#979797',
-                     length_includes_head=True,
-                     zorder=3)
+            ax.arrow(
+                seg.origin.x, seg.origin.y,
+                dx * length * 0.95,  # 95% of length to leave space for arrowhead
+                dy * length * 0.95,
+                head_width=0.4,
+                head_length=0.5,
+                fc='blue',
+                ec='blue',
+                length_includes_head=True,
+                width=0.001,
+                zorder=1
+            )
         ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
                 (seg.origin.y + seg.destination.y) / 2 + 0.3,
                 f"{seg.cost:.2f}",
@@ -179,12 +174,6 @@ def draw_segment_with_arrow(ax, seg):
     if length > 0:
         dx /= length
         dy /= length
-
-    # Draw line
-    ax.plot([seg.origin.x, seg.destination.x],
-            [seg.origin.y, seg.destination.y],
-            '#979797', zorder=1)
-
     # Draw arrow (positioned at 80% of length)
     arrow_length = 0.8 * length
     ax.arrow(seg.origin.x, seg.origin.y,
@@ -333,17 +322,13 @@ def highlight_neighbors(node_name):
     if not node.neighbors:
         show_message(f"Node '{node_name}' has no neighbors", is_error=True)
         return
-
     for seg in G.segments:
         dx = seg.destination.x - seg.origin.x
         dy = seg.destination.y - seg.origin.y
         length = math.sqrt(dx ** 2 + dy ** 2)
-
         if length > 0:
             dx /= length
             dy /= length
-
-    # Highlight neighbor connections
     for neighbor in node.neighbors:
         seg = next((s for s in G.segments if
                     s.origin == node and s.destination == neighbor), None)
@@ -351,52 +336,139 @@ def highlight_neighbors(node_name):
             dx = neighbor.x - node.x
             dy = neighbor.y - node.y
             length = math.sqrt(dx ** 2 + dy ** 2)
-
             if length > 0:
                 dx /= length
                 dy /= length
-
-            # Draw highlighted line
             ax.plot([node.x, neighbor.x],
                     [node.y, neighbor.y],
                     'r-', linewidth=2)
-
-            # Draw highlighted arrow
             ax.arrow(node.x, node.y,
                      dx * 0.8 * length, dy * 0.8 * length,
                      head_width=0.5, head_length=0.7,
                      fc='red', ec='red',
                      length_includes_head=True)
     for n in G.nodes:
-        # Node markers keep their colors
-        color = 'gray'  # Default color
+        color = 'gray'
         if n == node:
-            color = 'blue'  # Selected node
+            color = 'blue'
         elif n in node.neighbors:
-            color = 'green'  # Neighbor nodes
-
+            color = 'green'
         ax.plot(n.x, n.y, 'o', color=color, markersize=8)
-        # All text labels in black
         ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
-
-        # Highlight the selected node (keep red marker)
     ax.plot(node.x, node.y, 'blue', markersize=8)
     ax.text(node.x, node.y, node.name, color='black', ha='left', va='bottom')
-
-    # Highlight neighbors (keep blue markers)
     if 'canvas' in globals() and canvas:
+        canvas.get_tk_widget().destroy()
+    canvas = FigureCanvasTkAgg(fig, master=root)
+    canvas.draw()
+    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+
+
+original_G = CreateGraph_1()
+edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
+G = edited_G  # El gráfico mostrado será el editado (a espera de algún cambio)
+root.title("GUI")
+create_message_area()
+show_new_graph()
+
+def show_paths():
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) not in (1,5):  # Keep main buttons and canvas
+            widget.destroy()
+    tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
+    e_paths = tk.Entry(root)
+    e_paths.grid(row=0, column=3)
+    def search_paths():
+        node_name = e_paths.get().strip()
+        if not node_name:
+            show_message("Please enter a node name", is_error=True)
+            return
+        highlight_paths(node_name)
+        e_paths.delete(0, 'end')
+    search_btn = tk.Button(
+        root,
+        text='Show paths from the node',
+        command=lambda: search_paths(),
+        cursor='hand2'
+    )
+    search_btn.grid(row=0, column=4)
+
+def find_closest_path():
+    tk.Label(root, text="Find the closest path between two nodes:").grid(row=1, column=3)
+    tk.Label(root, text="From").grid(row=2, column=2)
+    tk.Label(root, text="To").grid(row=3, column=2)
+    e_path_from = tk.Entry(root)
+    e_path_from.grid(row=2, column=3)
+    e_path_to = tk.Entry(root)
+    e_path_to.grid(row=3, column=3)
+    def search_closest_path():
+        print('hi')
+    search_btn = tk.Button(
+        root,
+        text='Show paths from the node',
+        command=lambda: search_closest_path(),
+        cursor='hand2'
+    )
+    search_btn.grid(row=4, column=3)
+
+def highlight_paths(node_name):
+    global fig, ax, canvas, G
+    ax.clear()
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
+    ax.set_axisbelow(True)
+    start_node = SearchNode(G, node_name)
+    if not start_node:
+        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+        return
+    visited = set()
+    path_segments = set()
+    queue = [start_node]
+    visited.add(start_node)
+    while queue:
+        current_node = queue.pop(0)
+        for seg in [s for s in G.segments if s.origin == current_node]:
+            neighbor = seg.destination
+            path_segments.add(seg)
+            if neighbor not in visited:
+                visited.add(neighbor)
+                queue.append(neighbor)
+    for node in G.nodes:
+        color = 'gray'
+        if node == start_node:
+            color = 'red'
+        elif node in visited:
+            color = 'pink'
+        ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
+        ax.text(node.x, node.y, node.name,
+                color='black', ha='left', va='bottom', zorder=4)
+    for seg in G.segments:
+        dx = seg.destination.x - seg.origin.x
+        dy = seg.destination.y - seg.origin.y
+        length = math.sqrt(dx ** 2 + dy ** 2)
+        if length > 0:
+            dx /= length
+            dy /= length
+            if seg in path_segments:
+                arrow_color = 'blue'
+                z = 2
+            else:
+                arrow_color = 'gray'
+                z = 1
+
+            ax.arrow(seg.origin.x, seg.origin.y,
+                     dx * 0.95 * length, dy * 0.95 * length,
+                     head_width=0.5, head_length=0.5,
+                     fc=arrow_color, ec=arrow_color,
+                     length_includes_head=True,
+                     width=0.001,
+                     zorder=z)
+    if canvas:
         canvas.get_tk_widget().destroy()
 
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
     canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
-
-original_G = CreateGraph_1()
-edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
-G = edited_G  # El gráfico mostrado será el editado (a falta de algún cambio)
-root.title("GUI")
-create_message_area()
-show_new_graph()
+    show_message(f"Showing paths from node {node_name}")
 
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
@@ -404,7 +476,7 @@ def create_new_graph():
     edited_G = Graph()
     G = edited_G
     current_display_mode = "edited"
-    restore_main_view()  # Restore the main widgets
+    restore_main_view()
     show_new_graph()
     show_message("Created new empty graph")
 
@@ -554,6 +626,7 @@ def button_show_edited_graph():
                        wraplength=100)
 
     button_show_edited_graph.grid(row=1, column=1)
+
 def button_create_new_graph():
     '''Creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
     donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
@@ -611,6 +684,33 @@ def button_save_graph_info():
 
     button_save_graph_info.grid(row=3, column=1)
 
+def button_show_paths():
+    '''Este botón pretende que se puedan observar todos los caminos posibles de un nodo'''
+    button_show_paths = tk.Button(root,
+                                      text="Show the paths possibles from this node",
+                                      command=lambda: [func() for func in (show_paths, find_closest_path)],
+                                      activebackground="blue",
+                                      activeforeground="white",
+                                      anchor="center",
+                                      bd=3,
+                                      bg="lightgray",
+                                      cursor="hand2",
+                                      disabledforeground="lightgray",
+                                      fg="black",
+                                      font=("Arial", 12),
+                                      height=3,
+                                      highlightbackground="black",
+                                      highlightcolor="green",
+                                      highlightthickness=2,
+                                      justify="center",
+                                      overrelief="raised",
+                                      padx=10,
+                                      pady=5,
+                                      width=15,
+                                      wraplength=100)
+
+    button_show_paths.grid(row=5, column=1)
+
 def button_show_neighbors():
     '''Este botón pretende que se puedan observar todos los nodos vecinos de un nodo'''
     button_show_neighbors = tk.Button(root,
@@ -642,6 +742,7 @@ button_show_original_graph()
 button_show_edited_graph()
 button_create_new_graph()
 button_save_graph_info()
+button_show_paths()
 button_show_neighbors()
 
 def Entries():

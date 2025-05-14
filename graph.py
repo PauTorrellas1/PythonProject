@@ -91,13 +91,23 @@ def SegmentConfig(g, color: str):
     for s in g.segments:
         p.plot([s.origin.x, s.destination.x],
                  [s.origin.y, s.destination.y],
-                 color, zorder=1)
-
+                 color='blue', zorder=1, linewidth= 1.5)
+        dx = s.destination.x - s.origin.x
+        dy = s.destination.y - s.origin.y
+        length = (dx ** 2 + dy ** 2) ** 0.5
+        if length > 0:
+            arrow_length = length * 0.1
+            p.arrow(s.origin.x, s.origin.y,
+                    dx * 1, dy * 1, head_width=0.2, head_length=0.3,
+                    fc=color, ec=color,
+                    length_includes_head=True,
+                    zorder=1)
         # Mostrar coste con 2 decimales
         cost_text = f"{s.cost:.2f}"  # Formato: 2 decimales
-        p.text((s.origin.x + s.destination.x) / 2 + 0.5,
-                 (s.origin.y + s.destination.y) / 2 + 0.5,
-                 cost_text, zorder=3)
+        p.text((s.origin.x + s.destination.x) / 2 + 0.3,
+               (s.origin.y + s.destination.y) / 2 + 0.3,
+               cost_text, zorder=3,
+               bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
 def Plot(g):
     '''Fabricamos el gráfico que mostrará todos nuestros datos'''
@@ -146,17 +156,17 @@ def read_file(Nfile:str):
         Type of add (S=segment N=node), Name, Attribute1, Attribute 2
     """
     G = Graph()
-    F=open(Nfile,"r")
-    line=F.readline()
-    while line!="":
-        parts=line.strip().split(",")
-        if parts[0]=="N":
-            _, name, x, y = parts
-            AddNode(G, Node(name, eval(x), eval(y)))
-        if parts[0] == "S":
-            _, name, n1, n2 = parts
-            AddSegment(G, name, n1, n2)
-        line = F.readline()
+    with open(Nfile,"r") as F:
+        line=F.readline()
+        while line!="":
+            parts=line.strip().split(",")
+            if parts[0]=="N":
+                _, name, x, y = parts
+                AddNode(G, Node(name, eval(x), eval(y)))
+            if parts[0] == "S":
+                _, name, n1, n2 = parts
+                AddSegment(G, name, n1, n2)
+            line = F.readline()
     return G
 
 def CreateNode(g,name,x,y):
@@ -177,12 +187,11 @@ def DeleteNode(g, node_name):
     else:
         return False
 
-def DeleteSegment(g, Vector):
+def DeleteSegment(g, segment_name):
     '''Esta función elimina un segmento de segmentos'''
-    segments_to_remove = [s for s in g.segments if s.name in (Vector, Vector[::-1])]
-    SearchSegment(g, Vector)
-    if not segments_to_remove:
-        print('No encontrado')
-        return False
-    for segment in segments_to_remove:
-        g.segments.remove(segment)
+    g.segments = [s for s in g.segments if s.name != segment_name]
+    for node in g.nodes:
+        node.neighbors = [n for n in node.neighbors
+                          if not any(s.name == segment_name
+                                     for s in g.segments
+                                     if s.origin == node and s.destination == n)]
