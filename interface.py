@@ -48,15 +48,9 @@ def clear_message(delay=0):
 def show_message(message, is_error=False, persistent=False):
     """Display a message in the GUI message area"""
     global message_label
-
-    # Create message area if it doesn't exist
     if message_label is None:
         create_message_area()
-
-    # Clear previous message immediately
     clear_message()
-
-    # Format the message
     if is_error:
         formatted_message = f"Error: {message}"
         message_label.config(fg="red")
@@ -64,18 +58,12 @@ def show_message(message, is_error=False, persistent=False):
     else:
         formatted_message = message
         message_label.config(fg="black")
-
-    # Show the new message
     message_label.config(text=formatted_message)
     message_label.update_idletasks()
-
-    # Set up automatic clearing for non-persistent messages
     if not persistent:
         if is_error:
-            # Keep error messages for 5 seconds
             clear_message(delay=5)
         else:
-            # Keep success messages for 3 seconds
             clear_message(delay=3)
 
 def CreateGraph_1 ():
@@ -616,6 +604,8 @@ def draw_segment(seg, color, width, zorder, reverse=False):
 
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
+    show_message('Are you sure you want to create a new graph? You will loose the old one you have edited till now.'
+                 'We recommend you to save it before creating a new graph', is_error= False)
     global edited_G, G, current_display_mode
     edited_G = Graph()
     G = edited_G
