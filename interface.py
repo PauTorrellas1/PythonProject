@@ -4,7 +4,7 @@ from Create_New_Graph import *
 import tkinter as tk
 from tkinter import messagebox
 import threading
-
+import heapq
 from matplotlib.patches import ArrowStyle
 
 '''create new graph falta interfaz'''
@@ -33,7 +33,6 @@ def create_message_area():
     )
     message_label.pack(fill="x", expand=True)
 
-
 def clear_message(delay=0):
     """Clear the message after a delay"""
     def clear():
@@ -45,7 +44,6 @@ def clear_message(delay=0):
         clear_timer = root.after(int(delay * 1000), lambda: message_label.config(text=""))
     else:
         clear()
-
 
 def show_message(message, is_error=False, persistent=False):
     """Display a message in the GUI message area"""
@@ -120,8 +118,6 @@ def CreateGraph_1 ():
     AddSegment(G, "LK","L","K")
     AddSegment(G, "LF","L","F")
     return G
-show_message("Probando el grafo...")
-
 
 def show_new_graph():
     '''Establecemos que gráfico debe mostrar la GUI'''
@@ -164,6 +160,26 @@ def show_new_graph():
     else:
         canvas.draw()
 
+show_message("Probando el grafo...")
+original_G = CreateGraph_1()
+edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
+G = edited_G  # El gráfico mostrado será el editado (a espera de algún cambio)
+root.title("GUI")
+create_message_area()
+show_new_graph()
+path_info_frame = tk.Frame(root)
+path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)
+
+path_info_text = tk.Text(
+    path_info_frame,
+    height=4,
+    wrap=tk.WORD,
+    font=("Arial", 10),
+    bg="white",
+    fg="black",
+    relief=tk.FLAT
+)
+path_info_text.pack(fill=tk.BOTH, expand=True)
 
 def draw_segment_with_arrow(ax, seg):
     '''Helper function to draw a single segment with arrow'''
@@ -203,7 +219,6 @@ def draw_segment_with_arrow(ax, seg):
             f"{seg.cost:.2f}",
             zorder=4, fontsize=8,
             bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-
 
 def show_graph():
     '''Show the original graph'''
@@ -282,7 +297,6 @@ def print_graph_info():
     save_button.pack(pady=9)
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
-
 
 def show_neighbors():
     '''Show the neighbors of a node'''
@@ -363,14 +377,6 @@ def highlight_neighbors(node_name):
     canvas.draw()
     canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
-
-original_G = CreateGraph_1()
-edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
-G = edited_G  # El gráfico mostrado será el editado (a espera de algún cambio)
-root.title("GUI")
-create_message_area()
-show_new_graph()
-
 def show_paths():
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) not in (1,5):  # Keep main buttons and canvas
@@ -393,82 +399,220 @@ def show_paths():
     )
     search_btn.grid(row=0, column=4)
 
+    def highlight_paths(node_name):
+        global fig, ax, canvas, G
+        ax.clear()
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
+        ax.set_axisbelow(True)
+        start_node = SearchNode(G, node_name)
+        if not start_node:
+            show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+            return
+        visited = set()
+        path_segments = set()
+        queue = [start_node]
+        visited.add(start_node)
+        while queue:
+            current_node = queue.pop(0)
+            for seg in [s for s in G.segments if s.origin == current_node]:
+                neighbor = seg.destination
+                path_segments.add(seg)
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    queue.append(neighbor)
+        for node in G.nodes:
+            color = 'gray'
+            if node == start_node:
+                color = 'red'
+            elif node in visited:
+                color = 'pink'
+            ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
+            ax.text(node.x, node.y, node.name,
+                    color='black', ha='left', va='bottom', zorder=4)
+        for seg in G.segments:
+            dx = seg.destination.x - seg.origin.x
+            dy = seg.destination.y - seg.origin.y
+            length = math.sqrt(dx ** 2 + dy ** 2)
+            if length > 0:
+                dx /= length
+                dy /= length
+                if seg in path_segments:
+                    arrow_color = 'blue'
+                    z = 2
+                else:
+                    arrow_color = 'gray'
+                    z = 1
+
+                ax.arrow(seg.origin.x, seg.origin.y,
+                         dx * 0.95 * length, dy * 0.95 * length,
+                         head_width=0.5, head_length=0.5,
+                         fc=arrow_color, ec=arrow_color,
+                         length_includes_head=True,
+                         width=0.001,
+                         zorder=z)
+        if canvas:
+            canvas.get_tk_widget().destroy()
+
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+        show_message(f"Showing paths from node {node_name}")
+
+def show_path_info(node_from, node_to, path_names, total_distance):
+    """Display path information in the dedicated area below the map"""
+    path_info_text.config(state=tk.NORMAL)
+    path_info_text.delete(1.0, tk.END)
+    info = (f"Shortest path from {node_from} to {node_to}:\n"
+            f"Path: {path_names}\n"
+            f"Total distance: {total_distance:.2f}")
+    path_info_text.insert(tk.END, info)
+    path_info_text.config(state=tk.DISABLED)
+
 def find_closest_path():
     tk.Label(root, text="Find the closest path between two nodes:").grid(row=1, column=3)
     tk.Label(root, text="From").grid(row=2, column=2)
     tk.Label(root, text="To").grid(row=3, column=2)
     e_path_from = tk.Entry(root)
     e_path_from.grid(row=2, column=3)
+    node_from = e_path_from.get().strip()
     e_path_to = tk.Entry(root)
     e_path_to.grid(row=3, column=3)
+    node_to = e_path_to.get().strip()
+
+    def highlight_path(path):
+        """Highlights a path on the graph visualization with proper layering"""
+        ax.clear()
+        ax.grid(True, which='both', linestyle='--', linewidth=0.7, color='#AA336A')
+        ax.set_axisbelow(True)
+        for node in G.nodes:
+            color = 'gray'
+            if node in path:
+                color = 'green' if node != path[0] and node != path[-1] else 'blue'
+            ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=4)
+            ax.text(node.x, node.y, node.name, fontsize=10, zorder=5)
+        path_segments = set()
+        for i in range(len(path) - 1):
+            from_node = path[i]
+            to_node = path[i + 1]
+            path_segments.add((from_node.name, to_node.name))
+            path_segments.add((to_node.name, from_node.name))
+        for seg in G.segments:
+            if (seg.origin.name, seg.destination.name) not in path_segments:
+                draw_segment(seg, color='#CCCCCC', width=1, zorder=1)
+        for i in range(len(path) - 1):
+            from_node = path[i]
+            to_node = path[i + 1]
+            seg = None
+            for s in G.segments:
+                if s.origin == from_node and s.destination == to_node:
+                    seg = s
+                    break
+            if seg:
+                draw_segment(seg, color='red', width=2, zorder=3)
+            else:
+                for s in G.segments:
+                    if s.origin == to_node and s.destination == from_node:
+                        draw_segment(s, color='red', width=2, zorder=3, reverse=True)
+                        break
+        canvas.draw()
+
     def search_closest_path():
-        print('hi')
+        node_from = e_path_from.get().strip()  # Get from entry widget
+        node_to = e_path_to.get().strip()  # Get from entry widget
+        from_node = SearchNode(G, node_from)
+        to_node = SearchNode(G, node_to)
+        if not from_node:
+            show_message(f"Node '{node_from}' doesn't exist", is_error=True)
+            e_path_from.delete(0, 'end')
+            return
+        if not to_node:
+            show_message(f"Node '{node_to}' doesn't exist", is_error=True)
+            e_path_to.delete(0, 'end')
+            return
+        path, total_distance = finding_shortest_path(G, from_node, to_node)
+        if path:
+            path_names = " → ".join([node.name for node in path])
+            show_path_info(node_from, node_to, path_names, total_distance)
+            highlight_path(path)
+        else:
+            show_message(f"No path exists from {node_from} to {node_to}", is_error=True)
+        e_path_to.delete(0, 'end')
+        e_path_from.delete(0, 'end')
+
+    def finding_shortest_path(graph, start_node, end_node):
+        """Finds the shortest path from start_node to end_node using Dijkstra's algorithm"""
+        distances = {node: float('inf') for node in graph.nodes}
+        previous_nodes = {node: None for node in graph.nodes}
+        distances[start_node] = 0
+
+        # Use a tuple with (distance, node.name, node) to ensure proper comparison
+        priority_queue = []
+        heapq.heappush(priority_queue, (0, start_node.name, start_node))
+
+        while priority_queue:
+            current_distance, _, current_node = heapq.heappop(priority_queue)
+
+            if current_node == end_node:
+                break
+
+            if current_distance > distances[current_node]:
+                continue
+
+            for neighbor in current_node.neighbors:
+                segment = next(s for s in graph.segments
+                               if s.origin == current_node and s.destination == neighbor)
+
+                distance = current_distance + segment.cost
+                if distance < distances[neighbor]:
+                    distances[neighbor] = distance
+                    previous_nodes[neighbor] = current_node
+                    # Push with node.name to ensure comparable tuples
+                    heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+
+        # Reconstruct path
+        path = []
+        current = end_node
+        while current is not None:
+            path.insert(0, current)
+            current = previous_nodes.get(current, None)
+
+        if distances[end_node] != float('inf'):
+            return path, distances[end_node]
+        else:
+            return None, None
+
     search_btn = tk.Button(
         root,
         text='Show paths from the node',
-        command=lambda: search_closest_path(),
+        command=search_closest_path,
         cursor='hand2'
     )
-    search_btn.grid(row=4, column=3)
+    search_btn.grid(row= 4, column = 3)
 
-def highlight_paths(node_name):
-    global fig, ax, canvas, G
-    ax.clear()
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
-    ax.set_axisbelow(True)
-    start_node = SearchNode(G, node_name)
-    if not start_node:
-        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
-        return
-    visited = set()
-    path_segments = set()
-    queue = [start_node]
-    visited.add(start_node)
-    while queue:
-        current_node = queue.pop(0)
-        for seg in [s for s in G.segments if s.origin == current_node]:
-            neighbor = seg.destination
-            path_segments.add(seg)
-            if neighbor not in visited:
-                visited.add(neighbor)
-                queue.append(neighbor)
-    for node in G.nodes:
-        color = 'gray'
-        if node == start_node:
-            color = 'red'
-        elif node in visited:
-            color = 'pink'
-        ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
-        ax.text(node.x, node.y, node.name,
-                color='black', ha='left', va='bottom', zorder=4)
-    for seg in G.segments:
-        dx = seg.destination.x - seg.origin.x
-        dy = seg.destination.y - seg.origin.y
-        length = math.sqrt(dx ** 2 + dy ** 2)
-        if length > 0:
-            dx /= length
-            dy /= length
-            if seg in path_segments:
-                arrow_color = 'blue'
-                z = 2
-            else:
-                arrow_color = 'gray'
-                z = 1
-
+def draw_segment(seg, color, width, zorder, reverse=False):
+    """Helper function to draw a segment with proper styling"""
+    dx = seg.destination.x - seg.origin.x
+    dy = seg.destination.y - seg.origin.y
+    length = math.sqrt(dx ** 2 + dy ** 2)
+    if length > 0:
+        dx /= length
+        dy /= length
+        if not reverse:
             ax.arrow(seg.origin.x, seg.origin.y,
                      dx * 0.95 * length, dy * 0.95 * length,
                      head_width=0.5, head_length=0.5,
-                     fc=arrow_color, ec=arrow_color,
+                     fc=color, ec=color,
                      length_includes_head=True,
-                     width=0.001,
-                     zorder=z)
-    if canvas:
-        canvas.get_tk_widget().destroy()
-
-    canvas = FigureCanvasTkAgg(fig, master=root)
-    canvas.draw()
-    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
-    show_message(f"Showing paths from node {node_name}")
+                     linewidth=width,
+                     zorder=zorder)
+        else:
+            ax.arrow(seg.destination.x, seg.destination.y,
+                     -dx * 0.95 * length, -dy * 0.95 * length,
+                     head_width=0.5, head_length=0.5,
+                     fc=color, ec=color,
+                     length_includes_head=True,
+                     linewidth=width,
+                     zorder=zorder)
 
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
