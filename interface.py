@@ -5,14 +5,16 @@ import tkinter as tk
 from tkinter import messagebox
 import threading
 
-'''Hay que añadir interactividad en el gráfico'''
-'''No destruir el gráfico'''
+from matplotlib.patches import ArrowStyle
+
 '''create new graph falta interfaz'''
 root = tk.Tk()
 current_display_mode = "edited"
 message_label = None
 clear_timer = None
-
+fig = Figure(figsize=(6, 4), dpi=100)
+ax = fig.add_subplot(111)
+canvas = None
 
 def create_message_area():
     """Create the message display area at the bottom of the GUI"""
@@ -34,19 +36,13 @@ def create_message_area():
 
 def clear_message(delay=0):
     """Clear the message after a delay"""
-
     def clear():
         message_label.config(text="")
-
     global clear_timer
-
-    # Cancel any pending clear operation
     if clear_timer:
-        clear_timer.cancel()
-
+        root.after_cancel(clear_timer)
     if delay > 0:
-        clear_timer = threading.Timer(delay, clear)
-        clear_timer.start()
+        clear_timer = root.after(int(delay * 1000), lambda: message_label.config(text=""))
     else:
         clear()
 
@@ -126,51 +122,120 @@ def CreateGraph_1 ():
     return G
 show_message("Probando el grafo...")
 
-def show_new_graph():
-    '''Embed the graph plot inside the Tkinter GUI'''
-    global G, fig, ax, current_display_mode
 
-    # Determine which graph to show
-    display_G = original_G if current_display_mode == "original" else edited_G
-    for widget in root.winfo_children():
-        if isinstance(widget, FigureCanvasTkAgg):
-            widget.destroy()
-    fig = Figure(figsize=(6, 4), dpi=100)
-    ax = fig.add_subplot(111)
-    for segment in display_G.segments:
-        x_vals = [segment.origin.x, segment.destination.x]
-        y_vals = [segment.origin.y, segment.destination.y]
-        ax.plot(x_vals, y_vals, 'b-', linewidth=1)
-        ax.text(
-            (x_vals[0] + x_vals[1]) / 2,
-            (y_vals[0] + y_vals[1]) / 2,
-            segment.cost,
-            fontsize=8)
-    for node in display_G.nodes:
+def show_new_graph():
+    '''Establecemos que gráfico debe mostrar la GUI'''
+    global fig, ax, canvas
+    ax.clear()
+    for seg in G.segments:
+        dx = seg.destination.x - seg.origin.x
+        dy = seg.destination.y - seg.origin.y
+        length = math.sqrt(dx ** 2 + dy ** 2)
+        if length > 0:
+            dx /= length
+            dy /= length
+        ax.plot([seg.origin.x, seg.destination.x],
+                [seg.origin.y, seg.destination.y],
+                '#979797', zorder=1)
+        ax.arrow(seg.origin.x, seg.origin.y,
+                 dx * 0.8 * length, dy * 0.8 * length,
+                 head_width=0.3, head_length=0.4,
+                 fc='#979797', ec='#979797',
+                 length_includes_head=True,
+                 zorder=3)
+        is_bidirectional = any(
+            s.origin == seg.destination and s.destination == seg.origin
+            for s in G.segments)
+        if is_bidirectional:
+            ax.arrow(seg.destination.x, seg.destination.y,
+                     -dx * 0.8 * length, -dy * 0.8 * length,
+                     head_width=0.3, head_length=0.4,
+                     fc='#979797', ec='#979797',
+                     length_includes_head=True,
+                     zorder=3)
+        ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
+                (seg.origin.y + seg.destination.y) / 2 + 0.3,
+                f"{seg.cost:.2f}",
+                zorder=4, fontsize=8,
+                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+    for node in G.nodes:
         ax.plot(node.x, node.y, 'ro', markersize=8)
         ax.text(node.x, node.y, node.name, fontsize=10)
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.grid(True)
-    canvas = FigureCanvasTkAgg(fig, master=root)
-    canvas.draw()
-    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20, padx=10, pady=10)
+    if canvas is None:
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+    else:
+        canvas.draw()
+
+
+def draw_segment_with_arrow(ax, seg):
+    '''Helper function to draw a single segment with arrow'''
+    dx = seg.destination.x - seg.origin.x
+    dy = seg.destination.y - seg.origin.y
+    length = math.sqrt(dx ** 2 + dy ** 2)
+
+    if length > 0:
+        dx /= length
+        dy /= length
+
+    # Draw line
+    ax.plot([seg.origin.x, seg.destination.x],
+            [seg.origin.y, seg.destination.y],
+            '#979797', zorder=1)
+
+    # Draw arrow (positioned at 80% of length)
+    arrow_length = 0.8 * length
+    ax.arrow(seg.origin.x, seg.origin.y,
+             dx * arrow_length, dy * arrow_length,
+             head_width=0.3, head_length=0.4,
+             fc='#979797', ec='#979797',
+             length_includes_head=True,
+             zorder=3)
+
+    # Check for bidirectional
+    is_bidirectional = any(
+        s.origin == seg.destination and s.destination == seg.origin
+        for s in G.segments
+    )
+
+    if is_bidirectional:
+        ax.arrow(seg.destination.x, seg.destination.y,
+                 -dx * arrow_length, -dy * arrow_length,
+                 head_width=0.3, head_length=0.4,
+                 fc='#979797', ec='#979797',
+                 length_includes_head=True,
+                 zorder=3)
+
+    # Add cost text
+    ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
+            (seg.origin.y + seg.destination.y) / 2 + 0.3,
+            f"{seg.cost:.2f}",
+            zorder=4, fontsize=8,
+            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+
 
 def show_graph():
-    '''Mostramos el gráfico original con los datos proporcionados arriba'''
-    global current_display_mode
+    '''Show the original graph'''
+    global current_display_mode, G
     current_display_mode = "original"
+    G = original_G
+    restore_main_view()
     show_new_graph()
     show_message("Showing original graph")
 
 def show_graph_1():
-    '''Mostramos el nuevo gráfico editado con nuevos segmentos , nodos
-    y con los segmentos o nodos que hayamos eliminado '''
-    global current_display_mode
+    '''Show the edited graph'''
+    global current_display_mode, G
     current_display_mode = "edited"
+    G = edited_G
+    restore_main_view()
     show_new_graph()
     show_message("Showing edited graph")
 
+def restore_main_view():
+    '''Restore all main view widgets'''
+    Entries()  # This recreates all the widgets
+    show_new_graph()
 
 def print_graph_info():
     """Muestra todos los nodos y segmentos dentro del GUI"""
@@ -229,165 +294,122 @@ def print_graph_info():
 
 
 def show_neighbors():
-    '''Show only the neighbor search interface'''
-    # Clear ALL widgets from the right panel (columns 2-4)
+    '''Show the neighbors of a node'''
+    # Clear neighbor search widgets if they exist
     for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+        if widget.grid_info().get("row", 0) == 0 and widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-
-    # Create neighbor search UI
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
-    e_name = tk.Entry(root)
-    e_name.grid(row=0, column=3)
-
+    e_neighbor = tk.Entry(root)
+    e_neighbor.grid(row=0, column=3)
+    def search_and_clear():
+        node_name = e_neighbor.get().strip()
+        highlight_neighbors(node_name)
+        e_neighbor.delete(0, 'end')
     search_btn = tk.Button(
         root,
         text='Show Neighbors',
-        command=lambda: highlight_neighbors(e_name.get()),
+        command=lambda: search_and_clear(),
         cursor='hand2'
     )
     search_btn.grid(row=0, column=4)
 
-
 def highlight_neighbors(node_name):
-    '''Highlight neighbors in main graph'''
-    global G, fig, ax
-
+    '''Highlight neighbors of a node'''
+    global fig, ax, canvas
+    ax.clear()
     node_name = node_name.strip()
     if not node_name:
         show_message("Enter a node name", is_error=True)
         return
-
     node = SearchNode(G, node_name)
     if not node:
         show_message(f"Node '{node_name}' doesn't exist", is_error=True)
         return
-
     if not node.neighbors:
-        show_message("Information: Node has no neighbors", is_error=True)
+        show_message(f"Node '{node_name}' has no neighbors", is_error=True)
         return
 
-    # Clear and redraw graph with highlights
-    ax.clear()
-
-    # Draw all segments (gray)
     for seg in G.segments:
-        x = [seg.origin.x, seg.destination.x]
-        y = [seg.origin.y, seg.destination.y]
-        ax.plot(x, y, 'gray', alpha=0.3)
+        dx = seg.destination.x - seg.origin.x
+        dy = seg.destination.y - seg.origin.y
+        length = math.sqrt(dx ** 2 + dy ** 2)
 
-    # Highlight neighbor connections (blue)
+        if length > 0:
+            dx /= length
+            dy /= length
+
+    # Highlight neighbor connections
     for neighbor in node.neighbors:
         seg = next((s for s in G.segments if
-                    {s.origin, s.destination} == {node, neighbor}), None)
+                    s.origin == node and s.destination == neighbor), None)
         if seg:
-            x = [seg.origin.x, seg.destination.x]
-            y = [seg.origin.y, seg.destination.y]
-            ax.plot(x, y, 'b-', linewidth=2)
+            dx = neighbor.x - node.x
+            dy = neighbor.y - node.y
+            length = math.sqrt(dx ** 2 + dy ** 2)
 
-    # Draw all nodes (gray)
+            if length > 0:
+                dx /= length
+                dy /= length
+
+            # Draw highlighted line
+            ax.plot([node.x, neighbor.x],
+                    [node.y, neighbor.y],
+                    'r-', linewidth=2)
+
+            # Draw highlighted arrow
+            ax.arrow(node.x, node.y,
+                     dx * 0.8 * length, dy * 0.8 * length,
+                     head_width=0.5, head_length=0.7,
+                     fc='red', ec='red',
+                     length_includes_head=True)
     for n in G.nodes:
-        ax.plot(n.x, n.y, 'o', color='gray', markersize=8)
-        ax.text(n.x, n.y, n.name, color='gray')
+        # Node markers keep their colors
+        color = 'gray'  # Default color
+        if n == node:
+            color = 'blue'  # Selected node
+        elif n in node.neighbors:
+            color = 'green'  # Neighbor nodes
 
-    # Highlight selected node (red)
-    ax.plot(node.x, node.y, 'ro', markersize=10)
-    ax.text(node.x, node.y, node.name, color='red', weight='bold')
+        ax.plot(n.x, n.y, 'o', color=color, markersize=8)
+        # All text labels in black
+        ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
 
-    # Highlight neighbors (blue)
-    for neighbor in node.neighbors:
-        ax.plot(neighbor.x, neighbor.y, 'bo', markersize=8)
-        ax.text(neighbor.x, neighbor.y, neighbor.name, color='blue')
+        # Highlight the selected node (keep red marker)
+    ax.plot(node.x, node.y, 'blue', markersize=8)
+    ax.text(node.x, node.y, node.name, color='black', ha='left', va='bottom')
 
-    # Refresh plot
+    # Highlight neighbors (keep blue markers)
+    if 'canvas' in globals() and canvas:
+        canvas.get_tk_widget().destroy()
+
     canvas = FigureCanvasTkAgg(fig, master=root)
     canvas.draw()
     canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 original_G = CreateGraph_1()
-edited_G = CreateGraph_1()  # Start with a copy of the original
-G = edited_G  # Current working graph is the edited one
+edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
+G = edited_G  # El gráfico mostrado será el editado (a falta de algún cambio)
 root.title("GUI")
 create_message_area()
 show_new_graph()
 
-
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
-    global edited_G, G
-    edited_G = Graph()  # Create new empty graph
-    G = edited_G  # Set current working graph
-
-    # Rest of your existing create_new_graph code...
-    # Clear the right panel (graph area)
-    for widget in root.winfo_children():
-        if isinstance(widget, FigureCanvasTkAgg):
-            widget.destroy()
-
-    # Clear the input fields (columns 2-4)
-    for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) in [2, 3, 4]:
-            widget.destroy()
-
-    # Rest of your create_new_graph implementation...
-    # Show the empty graph
+    global edited_G, G, current_display_mode
+    edited_G = Graph()
+    G = edited_G
+    current_display_mode = "edited"
+    restore_main_view()  # Restore the main widgets
     show_new_graph()
     show_message("Created new empty graph")
 
-    # Create and store the entry widgets
-    e_name = tk.Entry(root)
-    e_x = tk.Entry(root)
-    e_y = tk.Entry(root)
-    e_from = tk.Entry(root)
-    e_to = tk.Entry(root)
-    e_delete_n = tk.Entry(root)
-    e_delete_s = tk.Entry(root)
-
-    # Grid the labels and entries
-    tk.Label(root, text="New node name").grid(row=2, column=2)
-    tk.Label(root, text="X").grid(row=3, column=2)
-    tk.Label(root, text="Y").grid(row=4, column=2)
-    tk.Label(root, text="From").grid(row=6, column=2)
-    tk.Label(root, text="To").grid(row=7, column=2)
-    tk.Label(root, text="Delete Node").grid(row=9, column=2)
-    tk.Label(root, text='Delete segment').grid(row=12, column=2)
-
-    e_name.grid(row=2, column=3)
-    e_x.grid(row=3, column=3)
-    e_y.grid(row=4, column=3)
-    e_from.grid(row=6, column=3)
-    e_to.grid(row=7, column=3)
-    e_delete_n.grid(row=9, column=3)
-    e_delete_s.grid(row=12, column=3)
-
-    # Create buttons with proper command binding
-    tk.Button(root, text="Add Node",
-              command=lambda: add_node_to_new_graph(e_name, e_x, e_y),
-              cursor="hand2").grid(row=5, column=3)
-
-    tk.Button(root, text="Add Segment",
-              command=lambda: add_segment_to_new_graph(e_from, e_to),
-              cursor="hand2").grid(row=8, column=3)
-
-    tk.Button(root, text="Delete Node",
-              command=lambda: delete_node_to_new_graph(e_delete_n),
-              cursor="hand2").grid(row=11, column=3)
-
-    tk.Button(root, text='Delete Segment',
-              command=lambda: delete_segment_to_new_graph(e_delete_s),
-              cursor='hand2').grid(row=15, column=3)
-
-    # Show the empty graph
-    show_new_graph()
-
-
 def add_node_to_new_graph(name_entry, x_entry, y_entry):
-    '''Function to add node to the new graph'''
+    '''Está función añade nodos al nuevo gráfico'''
     global G
     name = name_entry.get().strip()
     x_str = x_entry.get().strip()
     y_str = y_entry.get().strip()
-
     if not name or not x_str or not y_str:
         show_message("All the entries must be filled", is_error=True)
         return
@@ -400,79 +422,57 @@ def add_node_to_new_graph(name_entry, x_entry, y_entry):
     if SearchNode(G, name):
         show_message(f'The node "{name}" already exists', is_error=True)
         return
-
     AddNode(G, Node(name, x, y))
     show_new_graph()
     name_entry.delete(0, 'end')
     x_entry.delete(0, 'end')
     y_entry.delete(0, 'end')
 
-
-# Similar functions for other operations
 def add_segment_to_new_graph(from_entry, to_entry):
+    '''Con esta función añadimos segmentos entre dos
+    nodos creados a nuestro nuevo gráfico'''
     global G
     from_node_name = from_entry.get().strip()
     to_node_name = to_entry.get().strip()
-
     if not from_node_name or not to_node_name:
         show_message("Both nodes must be specified", is_error=True)
         return
-
-    # Check if nodes exist
     from_node = SearchNode(G, from_node_name)
     to_node = SearchNode(G, to_node_name)
-
     if not from_node:
         show_message(f"Node '{from_node_name}' doesn't exist", is_error=True)
         return
     if not to_node:
         show_message(f"Node '{to_node_name}' doesn't exist", is_error=True)
         return
-
     e_seg = f"{from_node_name}{to_node_name}"
-    e_seg1 = f"{to_node_name}{from_node_name}"
-
-    # Check if segment already exists
+    #e_seg1 = f"{to_node_name}{from_node_name}"
     segment_exists = any(
-        (s.name == e_seg or s.name == e_seg1)
+        (s.name == e_seg) #or s.name == e_seg1
         for s in G.segments)
-
     if segment_exists:
         show_message(f"Segment between {from_node_name} and {to_node_name} already exists", is_error=True)
         return
-
-    # Add the segments
     AddSegment(G, e_seg, from_node_name, to_node_name)
-    AddSegment(G, e_seg1, to_node_name, from_node_name)
-
-    # Clear entries and update the graph
+    #AddSegment(G, e_seg1, to_node_name, from_node_name)
     from_entry.delete(0, 'end')
     to_entry.delete(0, 'end')
     show_new_graph()
 
 def delete_node_to_new_graph(entry_widget):
-    '''Delete a node from the new graph'''
+    '''Esta función elimina nodos del nuevo gráfico'''
     global G
-
     node_name = entry_widget.get().strip()
-
     if not node_name:
         show_message("You must enter a node name to delete", is_error=True)
         return
-
-    # Search for the node
     node_to_delete = SearchNode(G, node_name)
-
     if not node_to_delete:
         show_message(f"Node '{node_name}' doesn't exist", is_error=True)
         entry_widget.delete(0, 'end')
         return
-
-    # Delete the node
     DeleteNode(G, node_name)
     show_message(f"Node '{node_name}' deleted successfully")
-
-    # Clear the entry and update the graph display
     entry_widget.delete(0, 'end')
     show_new_graph()
 
@@ -485,7 +485,7 @@ def delete_segment_to_new_graph(e_delete_s):
         return
     segment_to_delete = None
     for seg in G.segments:
-        if seg.name == segment_name or seg.name == segment_name[::-1]:
+        if seg.name == segment_name: #or seg.name == segment_name[::-1]:
             segment_to_delete = seg
             break
     if not segment_to_delete:
@@ -497,10 +497,9 @@ def delete_segment_to_new_graph(e_delete_s):
     e_delete_s.delete(0, 'end')
     show_new_graph()
 
-
-def button1():
+def button_show_original_graph():
     '''Mostramos el gráfico original con la información propporcionada'''
-    button1 = tk.Button(root,
+    button_show_original_graph = tk.Button(root,
                        text="Show original graph",
                        command=show_graph,
                        activebackground="blue",
@@ -523,10 +522,11 @@ def button1():
                        width=15,
                        wraplength=100)
 
-    button1.grid(row=0, column=1)
-def button2():
+    button_show_original_graph.grid(row=0, column=1)
+
+def button_show_edited_graph():
     '''Mostramos el nuevo gráfico editado por nosotros'''
-    button2 = tk.Button(root,
+    button_show_edited_graph = tk.Button(root,
                        text="Show edited graph",
                        command=show_graph_1,
                        activebackground="blue",
@@ -549,12 +549,12 @@ def button2():
                        width=15,
                        wraplength=100)
 
-    button2.grid(row=1, column=1)
-def button4():
+    button_show_edited_graph.grid(row=1, column=1)
+def button_create_new_graph():
     '''Creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
     donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
     la ventana anterior con la diferencia que este gráfico está creado desde cero por nostros mismos'''
-    button4 = tk.Button(root,
+    button_create_new_graph = tk.Button(root,
                        text="Crete new graph",
                        command=create_new_graph,
                        activebackground="blue",
@@ -576,7 +576,7 @@ def button4():
                        pady=5,
                        width=15,
                        wraplength=100)
-    button4.grid(row=2, column=1)
+    button_create_new_graph.grid(row=2, column=1)
 
 def button_save_graph_info():
     ''''
@@ -634,9 +634,9 @@ def button_show_neighbors():
 
     button_show_neighbors.grid(row=4, column=1)
 
-button1()
-button2()
-button4()
+button_show_original_graph()
+button_show_edited_graph()
+button_create_new_graph()
 button_save_graph_info()
 button_show_neighbors()
 
@@ -645,19 +645,21 @@ def Entries():
     de nuestra aplicación. si llevan tk.Label son únicamente texto,
     mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
     Si llevan tk.Button son botones para presionar y llevar acabo una acción o comando.'''
+    global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+            widget.destroy()
     tk.Label(root, text="File Name").grid(row=0, column=2)
-    #tk.Label(root, text="Origin Name").grid(row=1, column=2)
-    tk.Label(root, text="New node name").grid(row=2, column=2)
-    tk.Label(root, text="X").grid(row=3, column=2)
-    tk.Label(root, text="Y").grid(row=4, column=2)
-    tk.Label(root, text="From").grid(row=6, column=2)
-    tk.Label(root, text="To").grid(row=7, column=2)
-    tk.Label(root, text="Delete Node").grid(row=9, column=2)
-    tk.Label(root, text='Delete segment').grid(row=11, column=2)
+    tk.Label(root, text="New node name").grid(row=1, column=2)
+    tk.Label(root, text="X").grid(row=2, column=2)
+    tk.Label(root, text="Y").grid(row=3, column=2)
+    tk.Label(root, text="From").grid(row=5, column=2)
+    tk.Label(root, text="To").grid(row=6, column=2)
+    tk.Label(root, text="Delete Node").grid(row=8, column=2)
+    tk.Label(root, text='Delete segment').grid(row=10, column=2)
 
 
-    e1 = tk.Entry(root) #Primer entry
-    e2 = tk.Entry(root) #Segundo entry
+    e_file = tk.Entry(root) #Primer entry
     e_name = tk.Entry(root) #New_node nombre
     e_x = tk.Entry(root) #New_node valor x
     e_y = tk.Entry(root) #New_node valor y
@@ -666,30 +668,34 @@ def Entries():
     e_delete_n = tk.Entry(root) #Delete node
     e_delete_s = tk.Entry(root) #Delete origin segment
 
-    e1.grid(row=0, column=3)
-    #e2.grid(row=1, column=3)
-    e_name.grid(row=2, column=3)
-    e_x.grid(row=3, column=3)
-    e_y.grid(row=4, column=3)
-    e_from.grid(row=6, column=3)
-    e_to.grid(row=7, column=3)
-    e_delete_n.grid(row=9, column=3)
-    e_delete_s.grid(row=11, column=3)
+    e_file.grid(row=0, column=3)
+    e_name.grid(row=1, column=3)
+    e_x.grid(row=2, column=3)
+    e_y.grid(row=3, column=3)
+    e_from.grid(row=5, column=3)
+    e_to.grid(row=6, column=3)
+    e_delete_n.grid(row=8, column=3)
+    e_delete_s.grid(row=10, column=3)
 
     def entry1():
         '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
-        global G
+        global G, edited_G, current_display_mode
         try:
-            G = read_file(e1.get())
-            Plot(G)
+            new_graph = read_file(e_file.get())
+            if new_graph.nodes:
+                edited_G = new_graph
+                G = edited_G
+                current_display_mode = "edited"
+                show_graph_1()
+                show_message(f"Successfully loaded graph from {e_file.get()}")
+                e_file.delete(0, 'end')
+            else:
+                show_message("No valid nodes found in file", is_error=True)
+                e_file.delete(0, 'end')
         except FileNotFoundError:
-            show_message(f"Archive not found", is_error=True)
+            show_message(f"File not found: {e_file.get()}", is_error=True)
         except Exception as e:
-            show_message(f"{e}", is_error=True)
-
-    '''def entry2():
-        G = CreateGraph_1()
-        PlotNode(G, e2.get())'''
+            show_message(f"Error loading file: {str(e)}", is_error=True)
 
     def add_node():
         '''Añadimos un nodo al gráfico, marcando el nombre del nodo
@@ -706,9 +712,12 @@ def Entries():
             y = float(y_str)
         except ValueError:
             show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
+            e_x.delete(0, 'end')
+            e_y.delete(0, 'end')
             return
         if SearchNode(edited_G, name):
             show_message(f'The node "{name}" already exists', is_error=True)
+            e_name.delete(0, 'end')
             return
         AddNode(edited_G, Node(name, x, y))
         show_graph_1()
@@ -729,23 +738,29 @@ def Entries():
         node_to = SearchNode(edited_G, e_name_to)
         if not node_from:
             show_message(f"The node '{e_name_from}' doesn't exists. Create it first.", is_error=True)
+            e_from.delete(0, 'end')
             return
         if not node_to:
             show_message(f"The node '{e_name_to}' doesn't exists. Create it first.", is_error=True)
+            e_to.delete(0, 'end')
             return
         e_seg = f"{e_name_from}{e_name_to}"
         '''Creamos el nombre del segmento (vector) 
                 a partir del nodo destino  del nodo final'''
-        e_seg1 = f"{e_name_to}{e_name_from}"
+        #e_seg1 = f"{e_name_to}{e_name_from}"
         '''Creamos el otro vector (AB - BA)'''
         segment_exists = any(
-            (s.name == e_seg or s.name == e_seg1)
+            (s.name == e_seg) #or s.name == e_seg1)
             for s in edited_G.segments)
         if segment_exists:
             show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
+            e_from.delete(0, 'end')
+            e_to.delete(0, 'end')
             return
         AddSegment(edited_G, e_seg, e_name_from, e_name_to)
-        AddSegment(edited_G, e_seg1, e_name_to, e_name_from)
+        #AddSegment(edited_G, e_seg1, e_name_to, e_name_from)
+        e_from.delete(0, 'end')
+        e_to.delete(0, 'end')
         '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
@@ -780,7 +795,7 @@ def Entries():
             return
         segment_to_delete = None
         for seg in edited_G.segments:
-            if seg.name == segment_name or seg.name == segment_name[::-1]:
+            if seg.name == segment_name: #for seg.name == segment_name[::-1]:
                 segment_to_delete = seg
                 break
         if not segment_to_delete:
@@ -792,32 +807,6 @@ def Entries():
         e_delete_s.delete(0, 'end')
         show_graph_1()
 
-    def button3():
-        '''Botón de entry para crear el gráfico a partir de un documento de texto'''
-        button3 = tk.Button(root,
-                            text="Entry",
-                            command=entry1,
-                            activebackground="blue",
-                            activeforeground="white",
-                            anchor="center",
-                            bd=3,
-                            bg="lightgray",
-                            cursor="hand2",
-                            disabledforeground="gray",
-                            fg="black",
-                            font=("Arial", 12),
-                            height=2,
-                            highlightbackground="black",
-                            highlightcolor="green",
-                            highlightthickness=2,
-                            justify="center",
-                            overrelief="raised",
-                            padx=10,
-                            pady=5,
-                            width=5,
-                            wraplength=100)
-
-        button3.grid(row=0, column=4)
     '''def button4():
         button4 = tk.Button(root,
                             text="Entry",
@@ -844,23 +833,15 @@ def Entries():
 
         button4.grid(row=1, column=4)'''
 
-
-    button3()
-    #button4()
-    #De esta manera no sale el segundo entry, innecesario por el momento
-
-    tk.Button(root,
-              text="Add Node",
-              command=add_node, cursor="hand2").grid(row=5, column=3)
-    tk.Button(root, text="Add Segment",
-              command=add_segment, cursor="hand2").grid(row=8, column=3)
-    tk.Button(root, text="Delete Node",
-              command=delete_node, cursor="hand2").grid(row=10, column=3)
-    tk.Button(root, text='Delete Segment',
-              command=delete_segment, cursor='hand2').grid(row=13, column=3)
+    tk.Button(root, text="Entry", command=entry1, cursor="hand2").grid(row=0, column=4)
+    tk.Button(root, text="Add Node", command=add_node, cursor="hand2").grid(row=4, column=3)
+    tk.Button(root, text="Add Segment", command=add_segment, cursor="hand2").grid(row=7, column=3)
+    tk.Button(root, text="Delete Node", command=delete_node, cursor="hand2").grid(row=9, column=3)
+    tk.Button(root, text='Delete Segment', command=delete_segment, cursor='hand2').grid(row=13, column=3)
     '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
     se transforma en una mano (hand2) al pasar por encima'''
     root.geometry('1200x600')
+
 Entries()
 
 root.mainloop()
