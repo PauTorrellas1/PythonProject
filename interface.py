@@ -320,6 +320,8 @@ def highlight_neighbors(node_name):
     '''Highlight neighbors of a node'''
     global fig, ax, canvas
     ax.clear()
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+    ax.set_axisbelow(True)
     node_name = node_name.strip()
     if not node_name:
         show_message("Enter a node name", is_error=True)
