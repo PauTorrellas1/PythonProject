@@ -228,7 +228,10 @@ def show_graph_1():
 
 def restore_main_view():
     '''Restore all main view widgets'''
-    Entries()  # This recreates all the widgets
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+            widget.destroy()
+    Entries()
     show_new_graph()
 
 def print_graph_info():
@@ -604,8 +607,6 @@ def draw_segment(seg, color, width, zorder, reverse=False):
 
 def create_new_graph():
     '''Creamos un nuevo gráfico en blanco'''
-    show_message('Are you sure you want to create a new graph? You will loose the old one you have edited till now.'
-                 'We recommend you to save it before creating a new graph', is_error= False)
     global edited_G, G, current_display_mode
     edited_G = Graph()
     G = edited_G
@@ -613,6 +614,53 @@ def create_new_graph():
     restore_main_view()
     show_new_graph()
     show_message("Created new empty graph")
+
+def confirm_new_graph():
+    """Shows a confirmation dialog before creating new graph"""
+    confirm_window = tk.Toplevel(root)
+    confirm_window.title("Confirm")
+    confirm_window.transient(root)
+    confirm_window.grab_set()
+    confirm_window.resizable(False, False)
+    window_width = 300
+    window_height = 150
+    screen_width = confirm_window.winfo_screenwidth()
+    screen_height = confirm_window.winfo_screenheight()
+    x = (screen_width - window_width) // 2
+    y = (screen_height - window_height) // 2
+    confirm_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    def on_yes_confirm():
+        confirm_window.destroy()
+        create_new_graph()
+    warning_text = tk.Text(confirm_window,
+                           height=3,
+                           wrap=tk.WORD,
+                           bg='white',
+                           fg='black',
+                           relief=tk.FLAT,
+                           font=('Arial', 10),
+                           padx=10,
+                           pady=5)
+    warning_text.insert(tk.END, "Are you sure you want to create a new graph?\n", 'black')
+    warning_text.insert(tk.END, "All unsaved changes will be lost.\n", 'red')
+    warning_text.insert(tk.END, "We recommend saving your previous graph first.", 'black')
+    warning_text.tag_config('black', foreground='black')
+    warning_text.tag_config('red', foreground='red')
+    warning_text.config(state=tk.DISABLED)
+    warning_text.pack(pady=10)
+    button_frame = tk.Frame(confirm_window)
+    button_frame.pack(pady=10)
+    tk.Button(button_frame,
+              text="Yes, continue",
+              command=on_yes_confirm,
+              width=12).pack(side=tk.LEFT, padx=10)
+    tk.Button(button_frame,
+              text="No, cancel",
+              command=confirm_window.destroy,
+              width=12).pack(side=tk.RIGHT, padx=10)
+    confirm_window.grab_set()
+    confirm_window.wait_window()
 
 def add_node_to_new_graph(name_entry, x_entry, y_entry):
     '''Está función añade nodos al nuevo gráfico'''
@@ -767,7 +815,7 @@ def button_create_new_graph():
     la ventana anterior con la diferencia que este gráfico está creado desde cero por nostros mismos'''
     button_create_new_graph = tk.Button(root,
                        text="Crete new graph",
-                       command=create_new_graph,
+                       command=confirm_new_graph,
                        activebackground="blue",
                        activeforeground="white",
                        anchor="center",
