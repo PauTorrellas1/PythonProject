@@ -187,11 +187,18 @@ def DeleteNode(g, node_name):
     else:
         return False
 
-def DeleteSegment(g, segment_name):
-    '''Esta función elimina un segmento de segmentos'''
-    g.segments = [s for s in g.segments if s.name != segment_name]
-    for node in g.nodes:
-        node.neighbors = [n for n in node.neighbors
-                          if not any(s.name == segment_name
-                                     for s in g.segments
-                                     if s.origin == node and s.destination == n)]
+
+def DeleteSegment(graph, segment_name):
+    segment_to_delete = None
+    for seg in graph.segments:
+        if seg.name == segment_name:
+            segment_to_delete = seg
+            break
+    if segment_to_delete:
+        if segment_to_delete.destination in segment_to_delete.origin.neighbors:
+            segment_to_delete.origin.neighbors.remove(segment_to_delete.destination)
+        if segment_to_delete.origin in segment_to_delete.destination.neighbors:
+            segment_to_delete.destination.neighbors.remove(segment_to_delete.origin)
+        graph.segments.remove(segment_to_delete)
+        return True
+    return False

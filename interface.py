@@ -515,31 +515,44 @@ def find_closest_path():
         e_path_from.delete(0, 'end')
 
     def finding_shortest_path(graph, start_node, end_node):
-        #Encuentra la distancia mínima entre dos nodos usando un algoritmo
+        # Encuentra la distancia mínima entre dos nodos usando un algoritmo
         distances = {node: float('inf') for node in graph.nodes}
         previous_nodes = {node: None for node in graph.nodes}
         distances[start_node] = 0
         priority_queue = []
         heapq.heappush(priority_queue, (0, start_node.name, start_node))
+
         while priority_queue:
             current_distance, _, current_node = heapq.heappop(priority_queue)
             if current_node == end_node:
                 break
             if current_distance > distances[current_node]:
                 continue
+
             for neighbor in current_node.neighbors:
-                segment = next(s for s in graph.segments
-                               if s.origin == current_node and s.destination == neighbor)
+                # Find the segment (if it exists)
+                segment = None
+                for s in graph.segments:
+                    if s.origin == current_node and s.destination == neighbor:
+                        segment = s
+                        break
+
+                # Skip if no segment exists (this can happen if segment was deleted)
+                if not segment:
+                    continue
+
                 distance = current_distance + segment.cost
                 if distance < distances[neighbor]:
                     distances[neighbor] = distance
                     previous_nodes[neighbor] = current_node
                     heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+
         path = []
         current = end_node
         while current is not None:
             path.insert(0, current)
             current = previous_nodes.get(current, None)
+
         if distances[end_node] != float('inf'):
             return path, distances[end_node]
         else:
