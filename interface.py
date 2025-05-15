@@ -1,11 +1,4 @@
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg,NavigationToolbar2Tk)
-from Create_New_Graph import *
-import tkinter as tk
-from tkinter import messagebox
-import threading
-import heapq
-from matplotlib.patches import ArrowStyle
+from path import *
 
 '''create new graph falta interfaz'''
 root = tk.Tk()
@@ -531,7 +524,7 @@ def find_closest_path():
         e_path_from.delete(0, 'end')
 
     def finding_shortest_path(graph, start_node, end_node):
-        """Finds the shortest path from start_node to end_node using Dijkstra's algorithm"""
+        '''Encuentra la distancia mínima entre dos nodos usando un algoritmo '''
         distances = {node: float('inf') for node in graph.nodes}
         previous_nodes = {node: None for node in graph.nodes}
         distances[start_node] = 0
