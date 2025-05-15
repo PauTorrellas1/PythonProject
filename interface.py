@@ -5,7 +5,7 @@ root = tk.Tk()
 current_display_mode = "edited"
 message_label = None
 clear_timer = None
-fig = Figure(figsize=(6, 4), dpi=100)
+fig = Figure(figsize=(8.5, 7), dpi=100)
 ax = fig.add_subplot(111)
 canvas = None
 
@@ -375,7 +375,7 @@ def show_paths():
         e_paths.delete(0, 'end')
     search_btn = tk.Button(
         root,
-        text='Show paths from the node',
+        text='Show paths',
         command=lambda: search_paths(),
         cursor='hand2'
     )
