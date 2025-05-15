@@ -562,7 +562,7 @@ def find_closest_path():
             return None, None
     search_btn = tk.Button(
         root,
-        text='Show paths from the node',
+        text='Find closest path',
         command=search_closest_path,
         cursor='hand2'
     )
