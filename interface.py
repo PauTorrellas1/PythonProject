@@ -291,7 +291,6 @@ def print_graph_info():
 
 def show_neighbors():
     '''Show the neighbors of a node'''
-    # Clear neighbor search widgets if they exist
     for widget in root.winfo_children():
         if widget.grid_info().get("row", 0) == 0 and widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
@@ -348,8 +347,8 @@ def highlight_neighbors(node_name):
                     [node.y, neighbor.y],
                     'r-', linewidth=2)
             ax.arrow(node.x, node.y,
-                     dx * 0.8 * length, dy * 0.8 * length,
-                     head_width=0.5, head_length=0.7,
+                     dx * 0.95 * length, dy * 0.95 * length,
+                     head_width=0.5, head_length=0.5,
                      fc='red', ec='red',
                      length_includes_head=True)
     for n in G.nodes:
@@ -869,7 +868,7 @@ def button_save_graph_info():
 def button_show_paths():
     '''Este botón pretende que se puedan observar todos los caminos posibles de un nodo'''
     button_show_paths = tk.Button(root,
-                                      text="Show the paths possibles from this node",
+                                      text="Analyze paths",
                                       command=lambda: [func() for func in (show_paths, find_closest_path)],
                                       activebackground="blue",
                                       activeforeground="white",
