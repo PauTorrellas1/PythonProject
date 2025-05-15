@@ -1,15 +1,7 @@
 from path import *
 
-root = tk.Tk()
-current_display_mode = "edited"
-message_label = None
-clear_timer = None
-fig = Figure(figsize=(8.5, 7), dpi=100)
-ax = fig.add_subplot(111)
-canvas = None
-
 def create_message_area():
-    """Create the message display area at the bottom of the GUI"""
+    """Crea un mensaje que se muestre al final de la GUI"""
     global message_label
 
     message_frame = tk.Frame(root)
