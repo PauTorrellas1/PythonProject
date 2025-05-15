@@ -1114,7 +1114,7 @@ def Entries():
     tk.Button(root, text='Delete Segment', command=delete_segment, cursor='hand2').grid(row=13, column=3)
     '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
     se transforma en una mano (hand2) al pasar por encima'''
-    root.geometry('1200x600')
+    root.state('zoomed')
 
 Entries()
 
