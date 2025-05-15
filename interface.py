@@ -124,14 +124,14 @@ def show_new_graph():
             dy /= length
             ax.arrow(
                 seg.origin.x, seg.origin.y,
-                dx * length * 0.95,  # 95% of length to leave space for arrowhead
+                dx * length * 0.95,
                 dy * length * 0.95,
-                head_width=0.4,
+                head_width=0.5,
                 head_length=0.5,
                 fc='blue',
                 ec='blue',
                 length_includes_head=True,
-                width=0.001,
+                width=0.01,
                 zorder=1
             )
         ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
@@ -155,10 +155,10 @@ G = edited_G  # El gráfico mostrado será el editado (a espera de algún cambio
 root.title("GUI")
 create_message_area()
 show_new_graph()
-path_info_frame = tk.Frame(root)
-path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)
+'''path_info_frame = tk.Frame(root)
+path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)'''
 
-path_info_text = tk.Text(
+'''path_info_text = tk.Text(
     path_info_frame,
     height=4,
     wrap=tk.WORD,
@@ -167,7 +167,7 @@ path_info_text = tk.Text(
     fg="black",
     relief=tk.FLAT
 )
-path_info_text.pack(fill=tk.BOTH, expand=True)
+path_info_text.pack(fill=tk.BOTH, expand=True)'''
 
 def draw_segment_with_arrow(ax, seg):
     '''Helper function to draw a single segment with arrow'''
@@ -178,11 +178,10 @@ def draw_segment_with_arrow(ax, seg):
     if length > 0:
         dx /= length
         dy /= length
-    # Draw arrow (positioned at 80% of length)
-    arrow_length = 0.8 * length
+    arrow_length = 0.95 * length
     ax.arrow(seg.origin.x, seg.origin.y,
              dx * arrow_length, dy * arrow_length,
-             head_width=0.3, head_length=0.4,
+             head_width=0.5, head_length=0.5,
              fc='#979797', ec='#979797',
              length_includes_head=True,
              zorder=3)
@@ -196,7 +195,7 @@ def draw_segment_with_arrow(ax, seg):
     if is_bidirectional:
         ax.arrow(seg.destination.x, seg.destination.y,
                  -dx * arrow_length, -dy * arrow_length,
-                 head_width=0.3, head_length=0.4,
+                 head_width=0.5, head_length=0.5,
                  fc='#979797', ec='#979797',
                  length_includes_head=True,
                  zorder=3)
@@ -448,7 +447,7 @@ def show_paths():
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
         show_message(f"Showing paths from node {node_name}")
 
-def show_path_info(node_from, node_to, path_names, total_distance):
+'''def show_path_info(node_from, node_to, path_names, total_distance):
     """Display path information in the dedicated area below the map"""
     path_info_text.config(state=tk.NORMAL)
     path_info_text.delete(1.0, tk.END)
@@ -456,9 +455,10 @@ def show_path_info(node_from, node_to, path_names, total_distance):
             f"Path: {path_names}\n"
             f"Total distance: {total_distance:.2f}")
     path_info_text.insert(tk.END, info)
-    path_info_text.config(state=tk.DISABLED)
+    path_info_text.config(state=tk.DISABLED)'''
 
 def find_closest_path():
+    '''grupo de entradas/botones para encontrar el camíno minimo entre dos nodos'''
     tk.Label(root, text="Find the closest path between two nodes:").grid(row=1, column=3)
     tk.Label(root, text="From").grid(row=2, column=2)
     tk.Label(root, text="To").grid(row=3, column=2)
@@ -470,7 +470,7 @@ def find_closest_path():
     node_to = e_path_to.get().strip()
 
     def highlight_path(path):
-        """Highlights a path on the graph visualization with proper layering"""
+        """Subraya los caminos que nos interesen para mostrarlos en la GUI"""
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.7, color='#AA336A')
         ax.set_axisbelow(True)
@@ -507,8 +507,9 @@ def find_closest_path():
         canvas.draw()
 
     def search_closest_path():
-        node_from = e_path_from.get().strip()  # Get from entry widget
-        node_to = e_path_to.get().strip()  # Get from entry widget
+        '''encuentra el camino más corto entre dos nodos'''
+        node_from = e_path_from.get().strip()  # Obtenemos el nodo origen
+        node_to = e_path_to.get().strip() #Obtenemos el nodo desitno
         from_node = SearchNode(G, node_from)
         to_node = SearchNode(G, node_to)
         if not from_node:
@@ -522,7 +523,7 @@ def find_closest_path():
         path, total_distance = finding_shortest_path(G, from_node, to_node)
         if path:
             path_names = " → ".join([node.name for node in path])
-            show_path_info(node_from, node_to, path_names, total_distance)
+            '''show_path_info(node_from, node_to, path_names, total_distance)'''
             highlight_path(path)
         else:
             show_message(f"No path exists from {node_from} to {node_to}", is_error=True)
@@ -534,43 +535,31 @@ def find_closest_path():
         distances = {node: float('inf') for node in graph.nodes}
         previous_nodes = {node: None for node in graph.nodes}
         distances[start_node] = 0
-
-        # Use a tuple with (distance, node.name, node) to ensure proper comparison
         priority_queue = []
         heapq.heappush(priority_queue, (0, start_node.name, start_node))
-
         while priority_queue:
             current_distance, _, current_node = heapq.heappop(priority_queue)
-
             if current_node == end_node:
                 break
-
             if current_distance > distances[current_node]:
                 continue
-
             for neighbor in current_node.neighbors:
                 segment = next(s for s in graph.segments
                                if s.origin == current_node and s.destination == neighbor)
-
                 distance = current_distance + segment.cost
                 if distance < distances[neighbor]:
                     distances[neighbor] = distance
                     previous_nodes[neighbor] = current_node
-                    # Push with node.name to ensure comparable tuples
                     heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
-
-        # Reconstruct path
         path = []
         current = end_node
         while current is not None:
             path.insert(0, current)
             current = previous_nodes.get(current, None)
-
         if distances[end_node] != float('inf'):
             return path, distances[end_node]
         else:
             return None, None
-
     search_btn = tk.Button(
         root,
         text='Show paths from the node',
@@ -611,7 +600,6 @@ def create_new_graph():
     G = edited_G
     current_display_mode = "edited"
     restore_main_view()
-    show_new_graph()
     show_message("Created new empty graph")
 
 def confirm_new_graph():
@@ -813,7 +801,7 @@ def button_create_new_graph():
     donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
     la ventana anterior con la diferencia que este gráfico está creado desde cero por nostros mismos'''
     button_create_new_graph = tk.Button(root,
-                       text="Crete new graph",
+                       text="Create new graph",
                        command=confirm_new_graph,
                        activebackground="blue",
                        activeforeground="white",
