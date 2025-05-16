@@ -105,7 +105,7 @@ path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)'''
 path_info_text.pack(fill=tk.BOTH, expand=True)'''
 
 def draw_segment_with_arrow(ax, seg):
-   #función auxiliar que nos ayuda a crear un solo segmento con flecha incorporada
+    '''función auxiliar que nos ayuda a crear un solo segmento con flecha incorporada'''
     dx = seg.destination.x - seg.origin.x
     dy = seg.destination.y - seg.origin.y
     length = math.sqrt(dx ** 2 + dy ** 2)
@@ -121,7 +121,7 @@ def draw_segment_with_arrow(ax, seg):
              length_includes_head=True,
              zorder=3)
 
-    # Check for bidirectional
+    # Comprobamos si el Nodo es bidireccional
     is_bidirectional = any(
         s.origin == seg.destination and s.destination == seg.origin
         for s in G.segments
@@ -135,15 +135,26 @@ def draw_segment_with_arrow(ax, seg):
                  length_includes_head=True,
                  zorder=3)
 
-    # Add cost text
+    # Añadimos el texto del coste
     ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
             (seg.origin.y + seg.destination.y) / 2 + 0.3,
             f"{seg.cost:.2f}",
             zorder=4, fontsize=8,
             bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
 
+def work_with_entry(controls, function):
+    """Facilita el uso de la GUI haciendo funcional el botón del enter y saltando de una entrada
+    a otra en caso de haber varias entradas en una misma función"""
+    for i, control in enumerate(controls):
+        if i < len(controls) - 1:
+            if isinstance(control, tk.Entry):
+                control.bind('<Return>', lambda e, n=controls[i+1]: n.focus_set())
+        else:
+            if isinstance(control, tk.Entry):
+                control.bind('<Return>', lambda e: function())
+
 def show_graph():
-    #Función que nos muestra el grafo original
+    '''Función que nos muestra el grafo original'''
     global current_display_mode, G
     current_display_mode = "original"
     G = original_G
@@ -152,7 +163,7 @@ def show_graph():
     show_message("Showing original graph")
 
 def show_graph_1():
-    # Función que nos muestra el grafo una vez este está editado
+    '''Función que nos muestra el grafo una vez este está editado'''
     global current_display_mode, G
     current_display_mode = "edited"
     G = edited_G
@@ -226,15 +237,16 @@ def print_graph_info():
 def show_neighbors():
     #Función que nos muestra los vecinos de un nodo
     for widget in root.winfo_children():
-        if widget.grid_info().get("row", 0) == 0 and widget.grid_info().get("column", 0) in [2, 3, 4]:
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
-    def search_and_clear():
+    def search_and_clear(event=None):
         node_name = e_neighbor.get().strip()
         highlight_neighbors(node_name)
         e_neighbor.delete(0, 'end')
+    e_neighbor.bind('<Return>', search_and_clear)
     search_btn = tk.Button(
         root,
         text='Show Neighbors',
@@ -516,7 +528,7 @@ def button_show_edited_graph():
 def button_create_new_graph():
     #Aquí creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
     #donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
-    #la ventana anterior pero con la diferencia que este gráfico está creado desde cero por nostros mismos
+    #la ventana anterior pero con la diferencia que este gráfico está creado desde cero por nosotros mismos
     button_create_new_graph = tk.Button(root,
                        text="Create new graph",
                        command=confirm_new_graph,
@@ -667,7 +679,7 @@ def Entries():
     e_delete_n.grid(row=8, column=3)
     e_delete_s.grid(row=10, column=3)
 
-    def entry1():
+    def entry1(event=None):
         #Lee el texto de un documento determinado y nos muestra dicho gráfico
         global G, edited_G, current_display_mode
         try:
@@ -687,7 +699,7 @@ def Entries():
         except Exception as e:
             show_message(f"Error loading file: {str(e)}", is_error=True)
 
-    def add_node():
+    def add_node(event=None):
         '''Añadimos un nodo al gráfico, marcando el nombre del nodo
         y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
         global edited_G
@@ -715,7 +727,7 @@ def Entries():
         e_x.delete(0, 'end')
         e_y.delete(0, 'end')
 
-    def add_segment():
+    def add_segment(event=None):
         '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
         o creados con la función de AddNode'''
         global edited_G
@@ -757,7 +769,7 @@ def Entries():
         '''Limpiamos las entradas de texto'''
         show_graph_1()
 
-    def delete_node():
+    def delete_node(event=None):
         '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
         global edited_G
         node_name = e_delete_n.get().strip()
@@ -774,7 +786,7 @@ def Entries():
         e_delete_n.delete(0, 'end')
         show_graph_1()
 
-    def delete_segment():
+    def delete_segment(event=None):
         '''La misma función que delete_node, solo que en lugar de eliminar
         nodos esta función elimina segmentos'''
         global edited_G
@@ -823,6 +835,16 @@ def Entries():
 
         button4.grid(row=1, column=4)'''
 
+    file_entries = [e_file]
+    work_with_entry(file_entries, entry1)
+    add_node_entries = [e_name, e_x, e_y]
+    work_with_entry(add_node_entries, add_node)
+    add_segment_entries = [e_from, e_to]
+    work_with_entry(add_segment_entries, add_segment)
+    delete_node_entries = [e_delete_n]
+    work_with_entry(delete_node_entries, delete_node)
+    delete_segment_entries = [e_delete_s]
+    work_with_entry(delete_segment_entries, delete_segment)
     tk.Button(root, text="Entry", command=entry1, cursor="hand2").grid(row=0, column=4)
     tk.Button(root, text="Add Node", command=add_node, cursor="hand2").grid(row=4, column=3)
     tk.Button(root, text="Add Segment", command=add_segment, cursor="hand2").grid(row=7, column=3)

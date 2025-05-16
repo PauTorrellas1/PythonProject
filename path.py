@@ -1,8 +1,9 @@
 from matplotlib.figure import Figure
+from graph import *
+import tkinter as tk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from tkinter import messagebox
 import heapq
-from Create_New_Graph import *
 
 root = tk.Tk()
 current_display_mode = "edited"
