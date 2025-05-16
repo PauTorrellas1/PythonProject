@@ -1,9 +1,11 @@
 from matplotlib.figure import Figure
 from graph import *
 import tkinter as tk
+from tkinter import ttk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
 from tkinter import messagebox
 import heapq
+import time
 
 root = tk.Tk()
 current_display_mode = "edited"
@@ -47,6 +49,73 @@ def clear_message(delay=0):
     else:
         clear()
 
+def show_modern_error(title, message, code=None):
+    error_window = tk.Toplevel(root)
+    error_window.title(title)
+    error_window.resizable(False, False)
+
+    # Window dimensions and centering
+    window_width = 500
+    window_height = 180
+    screen_width = error_window.winfo_screenwidth()
+    screen_height = error_window.winfo_screenheight()
+    x = (screen_width - window_width) // 2
+    y = (screen_height - window_height) // 2
+    error_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+
+    # Modern dark styling
+    error_window.configure(bg='#2c2c2c')
+    error_window.attributes('-alpha', 0.98)
+
+    # Header with Mac-style buttons
+    header_frame = tk.Frame(error_window, bg='#1e1e1e', height=25)
+    header_frame.pack(fill='x')
+
+    for color in ['#ff5f57', '#ffbd2e', '#28c840']:
+        tk.Canvas(header_frame, width=12, height=12, bg=color, bd=0, relief='flat').pack(side='left', padx=5, pady=6)
+
+    # Main content
+    content_frame = tk.Frame(error_window, bg='#2c2c2c')
+    content_frame.pack(expand=True, fill='both', padx=20, pady=10)
+
+    # Icon
+    icon_canvas = tk.Canvas(content_frame, width=60, height=60, bg='#2c2c2c', highlightthickness=0)
+    icon_canvas.create_polygon(30, 5, 55, 20, 55, 45, 30, 60, 5, 45, 5, 20, fill='#e74c3c')
+    icon_canvas.create_text(30, 32, text='!', font=("Segoe UI", 22, 'bold'), fill='white')
+    icon_canvas.grid(row=0, column=0, padx=10)
+
+    # Error message
+    tk.Label(
+        content_frame,
+        text=message,
+        font=("Segoe UI", 12),
+        bg='#2c2c2c',
+        fg='white',
+        wraplength=380,
+        justify='left'
+    ).grid(row=0, column=1, padx=10)
+
+    # Button
+    button_frame = tk.Frame(error_window, bg='#2c2c2c')
+    button_frame.pack(fill='x', pady=(10, 0))
+
+    ok_btn = tk.Button(
+        button_frame,
+        text="OK",
+        command=error_window.destroy,
+        bg='#007bff',
+        fg='white',
+        activebackground='#0056b3',
+        font=("Segoe UI", 10, 'bold'),
+        width=8,
+        relief='flat',
+        bd=0
+    )
+    ok_btn.pack(side='right', padx=20)
+
+    error_window.grab_set()
+    error_window.transient(root)
+
 def show_message(message, is_error=False, persistent=False):
     """Display a message in the GUI message area"""
     global message_label
@@ -56,7 +125,7 @@ def show_message(message, is_error=False, persistent=False):
     if is_error:
         formatted_message = f"Error: {message}"
         message_label.config(fg="red")
-        messagebox.showerror("Error", message)
+        show_modern_error("Error", message)
     else:
         formatted_message = message
         message_label.config(fg="black")
