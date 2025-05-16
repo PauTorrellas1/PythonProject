@@ -1,6 +1,7 @@
 from path import *
 
 def CreateGraph_1 ():
+    '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
     G = Graph()
     AddNode(G, Node("A",1,20))
     AddNode(G, Node("B",8,17))
@@ -42,18 +43,16 @@ def CreateGraph_1 ():
     return G
 
 def show_new_graph():
-    #Establecemos qué implica que la GUI debe mostrar un nuevo gráfico
+    '''Establecemos que debe mostrar la GUI en el gráfico'''
     global fig, ax, canvas
     ax.clear()
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color= '#AA336A')
     ax.set_axisbelow(True)
-
-    for seg in G.segments:
+    for seg in G.segments: #Calculamos la distancia entre dos nodos
         dx = seg.destination.x - seg.origin.x
         dy = seg.destination.y - seg.origin.y
         length = math.sqrt(dx ** 2 + dy ** 2)
-
-        if length > 0:
+        if length > 0: #Especificamos que configuarciones queremos mostrar en el gráfico
             dx /= length
             dy /= length
             ax.arrow(
@@ -66,8 +65,7 @@ def show_new_graph():
                 ec='blue',
                 length_includes_head=True,
                 width=0.01,
-                zorder=1
-            )
+                zorder=1)
         ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
                 (seg.origin.y + seg.destination.y) / 2 + 0.3,
                 f"{seg.cost:.2f}",
@@ -83,75 +81,24 @@ def show_new_graph():
         canvas.draw()
 
 show_message("Probando el grafo...")
-original_G = CreateGraph_1()
+original_G = CreateGraph_1() #Guardamos el gráfico original en una variable
 edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
-G = edited_G
+G = edited_G #Especificamos que por el momento el gráfico a mostrar será el editado
 set_graph(G) # El gráfico mostrado será el editado (a espera de algún cambio)
-root.title("GUI")
-create_message_area()
-show_new_graph()
-'''path_info_frame = tk.Frame(root)
-path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)'''
-
-'''path_info_text = tk.Text(
+root.title("GUI") #Abrimos la ventana del GUI
+create_message_area() #Creamos el área para mensajes que usaremos más tarde
+show_new_graph() #Mostramos el gráfico
+path_info_frame = tk.Frame(root)
+path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)
+path_info_text = tk.Text(
     path_info_frame,
     height=4,
     wrap=tk.WORD,
     font=("Arial", 10),
     bg="white",
     fg="black",
-    relief=tk.FLAT
-)
-path_info_text.pack(fill=tk.BOTH, expand=True)'''
-
-def draw_segment_with_arrow(ax, seg):
-    '''función auxiliar que nos ayuda a crear un solo segmento con flecha incorporada'''
-    dx = seg.destination.x - seg.origin.x
-    dy = seg.destination.y - seg.origin.y
-    length = math.sqrt(dx ** 2 + dy ** 2)
-
-    if length > 0:
-        dx /= length
-        dy /= length
-    arrow_length = 0.95 * length
-    ax.arrow(seg.origin.x, seg.origin.y,
-             dx * arrow_length, dy * arrow_length,
-             head_width=0.5, head_length=0.5,
-             fc='#979797', ec='#979797',
-             length_includes_head=True,
-             zorder=3)
-
-    # Comprobamos si el Nodo es bidireccional
-    is_bidirectional = any(
-        s.origin == seg.destination and s.destination == seg.origin
-        for s in G.segments
-    )
-
-    if is_bidirectional:
-        ax.arrow(seg.destination.x, seg.destination.y,
-                 -dx * arrow_length, -dy * arrow_length,
-                 head_width=0.5, head_length=0.5,
-                 fc='#979797', ec='#979797',
-                 length_includes_head=True,
-                 zorder=3)
-
-    # Añadimos el texto del coste
-    ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
-            (seg.origin.y + seg.destination.y) / 2 + 0.3,
-            f"{seg.cost:.2f}",
-            zorder=4, fontsize=8,
-            bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
-
-def work_with_entry(controls, function):
-    """Facilita el uso de la GUI haciendo funcional el botón del enter y saltando de una entrada
-    a otra en caso de haber varias entradas en una misma función"""
-    for i, control in enumerate(controls):
-        if i < len(controls) - 1:
-            if isinstance(control, tk.Entry):
-                control.bind('<Return>', lambda e, n=controls[i+1]: n.focus_set())
-        else:
-            if isinstance(control, tk.Entry):
-                control.bind('<Return>', lambda e: function())
+    relief=tk.FLAT)
+path_info_text.pack(fill=tk.BOTH, expand=True)
 
 def show_graph():
     '''Función que nos muestra el grafo original'''
@@ -163,7 +110,7 @@ def show_graph():
     show_message("Showing original graph")
 
 def show_graph_1():
-    '''Función que nos muestra el grafo una vez este está editado'''
+    '''Función que nos muestra el grafo editado'''
     global current_display_mode, G
     current_display_mode = "edited"
     G = edited_G
@@ -172,7 +119,8 @@ def show_graph_1():
     show_message("Showing edited graph")
 
 def restore_main_view():
-    #Para volver a ver los principales botones
+    '''Reseteamos la vista para no superponer unos botones con otros,
+    aunque estos sean idénticos'''
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
@@ -180,9 +128,9 @@ def restore_main_view():
     show_new_graph()
 
 def print_graph_info():
-    """Muestra todos los nodos y segmentos dentro del GUI"""
+    """Muestra todos los nodos y segmentos de un archivo guardado dentro del GUI"""
     def save_info():
-        #Guarda toda la información de los nodos y segmentos en un archivo que se puede abrir después
+        '''Guarda toda la información de los nodos y segmentos en un archivo que se puede abrir después'''
         with open('Graph information', 'w') as graph_info:
             if hasattr(G, 'nodes') and G.nodes:
                 for node in G.nodes:
@@ -194,11 +142,9 @@ def print_graph_info():
                     graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
             else:
                 show_message('There are not any segments in the graph', is_error=True)
-
     global G
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
-
     text_frame = tk.Frame(info_window)
     text_frame.pack(fill=tk.BOTH, expand=True)
     scrollbar = tk.Scrollbar(text_frame)
@@ -207,9 +153,8 @@ def print_graph_info():
     text_widget.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=text_widget.yview)
     #Opciones de visualización de la ventana donde observamos todos los nodos y segmentos del gráfico
-
+    #Aquí podremos ver toda la información que vayamos a guardar y asegurarnos que esta esté bien guardada
     info_text = "=== GRAPH INFORMATION ===\n\n"
-
     if hasattr(G, 'nodes') and G.nodes:
         info_text += "NODES:\n"
         for node in G.nodes:
@@ -228,14 +173,13 @@ def print_graph_info():
     #Mostramos toda la información guardada, es decir, los Nodos y sus posiciones,
     #y los segmentos y sus nombres, los respectivos nodos que los forman y el
     #coste de cada uno de ellos
-
     save_button = tk.Button(info_window, text='Save the information', command=lambda: [save_info(), info_window.destroy()])
     save_button.pack(pady=9)
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
 
 def show_neighbors():
-    #Función que nos muestra los vecinos de un nodo
+    '''Esta función nos muestra a todos los vecinos de un nodo'''
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
@@ -243,6 +187,7 @@ def show_neighbors():
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
     def search_and_clear(event=None):
+        '''Limpiamos la entrada de texto donde escribimos el nodoa estudiar'''
         node_name = e_neighbor.get().strip()
         highlight_neighbors(node_name)
         e_neighbor.delete(0, 'end')
@@ -255,76 +200,66 @@ def show_neighbors():
     )
     search_btn.grid(row=0, column=4)
 
-def highlight_neighbors(node_name):
-    # Función que nos marca los vecinos de un nodo
-    global fig, ax, canvas
-    ax.clear()
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5)
-    ax.set_axisbelow(True)
-    node_name = node_name.strip()
-    if not node_name:
-        show_message("Enter a node name", is_error=True)
-        return
-    node = SearchNode(G, node_name)
-    if not node:
-        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
-        return
-    if not node.neighbors:
-        show_message(f"Node '{node_name}' has no neighbors", is_error=True)
-        return
-    for seg in G.segments:
-        dx = seg.destination.x - seg.origin.x
-        dy = seg.destination.y - seg.origin.y
-        length = math.sqrt(dx ** 2 + dy ** 2)
-        if length > 0:
-            dx /= length
-            dy /= length
-    for neighbor in node.neighbors:
-        seg = next((s for s in G.segments if
-                    s.origin == node and s.destination == neighbor), None)
-        if seg:
-            dx = neighbor.x - node.x
-            dy = neighbor.y - node.y
+    def highlight_neighbors(node_name):
+        '''Esta función resalta los vecinos de un nodo'''
+        global fig, ax, canvas
+        ax.clear()
+        ax.grid(True, which='both', linestyle='--', linewidth=0.5)
+        ax.set_axisbelow(True)
+        node_name = node_name.strip()
+        if not node_name:
+            show_message("Enter a node name", is_error=True)
+            return
+        node = SearchNode(G, node_name)
+        if not node:
+            show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+            return
+        if not node.neighbors:
+            show_message(f"Node '{node_name}' has no neighbors", is_error=True)
+            return
+        for seg in G.segments:
+            dx = seg.destination.x - seg.origin.x
+            dy = seg.destination.y - seg.origin.y
             length = math.sqrt(dx ** 2 + dy ** 2)
             if length > 0:
                 dx /= length
                 dy /= length
-            ax.plot([node.x, neighbor.x],
-                    [node.y, neighbor.y],
-                    'r-', linewidth=2)
-            ax.arrow(node.x, node.y,
-                     dx * 0.95 * length, dy * 0.95 * length,
-                     head_width=0.5, head_length=0.5,
-                     fc='red', ec='red',
-                     length_includes_head=True)
-    for n in G.nodes:
-        color = 'gray'
-        if n == node:
-            color = 'blue'
-        elif n in node.neighbors:
-            color = 'green'
-        ax.plot(n.x, n.y, 'o', color=color, markersize=8)
-        ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
-    ax.plot(node.x, node.y, 'blue', markersize=8)
-    ax.text(node.x, node.y, node.name, color='black', ha='left', va='bottom')
-    if 'canvas' in globals() and canvas:
-        canvas.get_tk_widget().destroy()
-    canvas = FigureCanvasTkAgg(fig, master=root)
-    canvas.draw()
-    canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
-
-'''def show_path_info(node_from, node_to, path_names, total_distance):
-    """Display path information in the dedicated area below the map"""
-    path_info_text.config(state=tk.NORMAL)
-    path_info_text.delete(1.0, tk.END)
-    info = (f"Shortest path from {node_from} to {node_to}:\n"
-            f"Path: {path_names}\n"
-            f"Total distance: {total_distance:.2f}")
-    path_info_text.insert(tk.END, info)
-    path_info_text.config(state=tk.DISABLED)'''
+        for neighbor in node.neighbors:
+            seg = next((s for s in G.segments if
+                        s.origin == node and s.destination == neighbor), None)
+            if seg:
+                dx = neighbor.x - node.x
+                dy = neighbor.y - node.y
+                length = math.sqrt(dx ** 2 + dy ** 2)
+                if length > 0:
+                    dx /= length
+                    dy /= length
+                ax.plot([node.x, neighbor.x],
+                        [node.y, neighbor.y],
+                        'r-', linewidth=2)
+                ax.arrow(node.x, node.y,
+                         dx * 0.95 * length, dy * 0.95 * length,
+                         head_width=0.5, head_length=0.5,
+                         fc='red', ec='red',
+                         length_includes_head=True)
+        for n in G.nodes:
+            color = 'gray'
+            if n == node:
+                color = 'blue'
+            elif n in node.neighbors:
+                color = 'green'
+            ax.plot(n.x, n.y, 'o', color=color, markersize=8)
+            ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
+        ax.plot(node.x, node.y, 'blue', markersize=8)
+        ax.text(node.x, node.y, node.name, color='black', ha='left', va='bottom')
+        if 'canvas' in globals() and canvas:
+            canvas.get_tk_widget().destroy()
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.draw()
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 def create_new_graph():
-    #Creamos un nuevo gráfico en blanco
+    '''Esta función crea un gráfico en blanco'''
     global edited_G, G, current_display_mode
     edited_G = Graph()
     G = edited_G
@@ -333,7 +268,8 @@ def create_new_graph():
     show_message("Created new empty graph")
 
 def confirm_new_graph():
-    """Shows a confirmation dialog before creating new graph"""
+    """Muestra un aviso para confirmar que el usuario realmente quiere abrir el grafo,
+    y recomendarle que guarde la información si no desea perderla"""
     confirm_window = tk.Toplevel(root)
     confirm_window.title("Confirm")
     confirm_window.transient(root)
@@ -379,213 +315,124 @@ def confirm_new_graph():
     confirm_window.grab_set()
     confirm_window.wait_window()
 
-def add_node_to_new_graph(name_entry, x_entry, y_entry):
-    ''#Esta función añade nodos al nuevo gráfico
-    global G
-    name = name_entry.get().strip()
-    x_str = x_entry.get().strip()
-    y_str = y_entry.get().strip()
-    if not name or not x_str or not y_str:
-        show_message("All the entries must be filled", is_error=True)
-        return
-    try:
-        x = float(x_str)
-        y = float(y_str)
-    except ValueError:
-        show_message("The coordinates must be numbers", is_error=True)
-        return
-    if SearchNode(G, name):
-        show_message(f'The node "{name}" already exists', is_error=True)
-        return
-    AddNode(G, Node(name, x, y))
-    show_new_graph()
-    name_entry.delete(0, 'end')
-    x_entry.delete(0, 'end')
-    y_entry.delete(0, 'end')
+def Buttons():
+    def button_show_original_graph():
+        '''Botón para mostrar el gráfico original'''
+        button_show_original_graph = tk.Button(root,
+                                               text="Show original graph",
+                                               command=show_graph,
+                                               activebackground="blue",
+                                               activeforeground="white",
+                                               anchor="center",
+                                               bd=3,
+                                               bg="lightgray",
+                                               cursor="hand2",
+                                               disabledforeground="gray",
+                                               fg="black",
+                                               font=("Arial", 12),
+                                               height=2,
+                                               highlightbackground="black",
+                                               highlightcolor="green",
+                                               highlightthickness=2,
+                                               justify="center",
+                                               overrelief="raised",
+                                               padx=10,
+                                               pady=5,
+                                               width=15,
+                                               wraplength=100)
 
-def add_segment_to_new_graph(from_entry, to_entry):
-    #Con esta función añadimos segmentos entre dos nodos creados a nuestro nuevo gráfico
-    global G
-    from_node_name = from_entry.get().strip()
-    to_node_name = to_entry.get().strip()
-    if not from_node_name or not to_node_name:
-        show_message("Both nodes must be specified", is_error=True)
-        return
-    from_node = SearchNode(G, from_node_name)
-    to_node = SearchNode(G, to_node_name)
-    if not from_node:
-        show_message(f"Node '{from_node_name}' doesn't exist", is_error=True)
-        return
-    if not to_node:
-        show_message(f"Node '{to_node_name}' doesn't exist", is_error=True)
-        return
-    e_seg = f"{from_node_name}{to_node_name}"
-    #e_seg1 = f"{to_node_name}{from_node_name}"
-    segment_exists = any(
-        (s.name == e_seg) #or s.name == e_seg1
-        for s in G.segments)
-    if segment_exists:
-        show_message(f"Segment between {from_node_name} and {to_node_name} already exists", is_error=True)
-        return
-    AddSegment(G, e_seg, from_node_name, to_node_name)
-    #AddSegment(G, e_seg1, to_node_name, from_node_name)
-    from_entry.delete(0, 'end')
-    to_entry.delete(0, 'end')
-    show_new_graph()
+        button_show_original_graph.grid(row=0, column=1)
 
-def delete_node_to_new_graph(entry_widget):
-    #Esta función elimina nodos del nuevo gráfico
-    global G
-    node_name = entry_widget.get().strip()
-    if not node_name:
-        show_message("You must enter a node name to delete", is_error=True)
-        return
-    node_to_delete = SearchNode(G, node_name)
-    if not node_to_delete:
-        show_message(f"Node '{node_name}' doesn't exist", is_error=True)
-        entry_widget.delete(0, 'end')
-        return
-    DeleteNode(G, node_name)
-    show_message(f"Node '{node_name}' deleted successfully")
-    entry_widget.delete(0, 'end')
-    show_new_graph()
+    def button_show_edited_graph():
+        '''Botón para mostrar el gráfico editado por nosotros'''
+        button_show_edited_graph = tk.Button(root,
+                                             text="Show edited graph",
+                                             command=show_graph_1,
+                                             activebackground="blue",
+                                             activeforeground="white",
+                                             anchor="center",
+                                             bd=3,
+                                             bg="lightgray",
+                                             cursor="hand2",
+                                             disabledforeground="gray",
+                                             fg="black",
+                                             font=("Arial", 12),
+                                             height=2,
+                                             highlightbackground="black",
+                                             highlightcolor="green",
+                                             highlightthickness=2,
+                                             justify="center",
+                                             overrelief="raised",
+                                             padx=10,
+                                             pady=5,
+                                             width=15,
+                                             wraplength=100)
 
-def delete_segment_to_new_graph(e_delete_s):
-    #Eliminamos un segmento de nuestro gráfico
-    segment_name = e_delete_s.get().strip()
-    if not segment_name:
-        show_message("You must write the name of the segment you want to delete.", is_error=True)
-        e_delete_s.delete(0, 'end')
-        return
-    segment_to_delete = None
-    for seg in G.segments:
-        if seg.name == segment_name: #or seg.name == segment_name[::-1]:
-            segment_to_delete = seg
-            break
-    if not segment_to_delete:
-        show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
-        e_delete_s.delete(0, 'end')
-        return
-    DeleteSegment(G, segment_to_delete.name)
-    show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
-    e_delete_s.delete(0, 'end')
-    show_new_graph()
+        button_show_edited_graph.grid(row=1, column=1)
 
-def button_show_original_graph():
-    #Mostramos el gráfico original con la nueva información
-    button_show_original_graph = tk.Button(root,
-                       text="Show original graph",
-                       command=show_graph,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
+    def button_create_new_graph():
+        '''Aquí creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
+        donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
+        la ventana anterior pero con la diferencia que este gráfico está creado desde cero por nosotros mismos'''
+        button_create_new_graph = tk.Button(root,
+                                            text="Create new graph",
+                                            command=confirm_new_graph,
+                                            activebackground="blue",
+                                            activeforeground="white",
+                                            anchor="center",
+                                            bd=3,
+                                            bg="lightgray",
+                                            cursor="hand2",
+                                            disabledforeground="gray",
+                                            fg="black",
+                                            font=("Arial", 12),
+                                            height=2,
+                                            highlightbackground="black",
+                                            highlightcolor="green",
+                                            highlightthickness=2,
+                                            justify="center",
+                                            overrelief="raised",
+                                            padx=10,
+                                            pady=5,
+                                            width=15,
+                                            wraplength=100)
+        button_create_new_graph.grid(row=2, column=1)
 
-    button_show_original_graph.grid(row=0, column=1)
+    def button_save_graph_info():
+        '''Botón para ver la información del grafo y posteriormente,
+        si lo desea, guardarla'''
+        button_save_graph_info = tk.Button(root,
+                                           text="Save the information of the graph",
+                                           command=print_graph_info,
+                                           activebackground="blue",
+                                           activeforeground="white",
+                                           anchor="center",
+                                           bd=3,
+                                           bg="lightgray",
+                                           cursor="hand2",
+                                           disabledforeground="gray",
+                                           fg="black",
+                                           font=("Arial", 12),
+                                           height=2,
+                                           highlightbackground="black",
+                                           highlightcolor="green",
+                                           highlightthickness=2,
+                                           justify="center",
+                                           overrelief="raised",
+                                           padx=10,
+                                           pady=5,
+                                           width=15,
+                                           wraplength=100)
 
-def button_show_edited_graph():
-    #Mostramos el nuevo gráfico editado por nosotros
-    button_show_edited_graph = tk.Button(root,
-                       text="Show edited graph",
-                       command=show_graph_1,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
+        button_save_graph_info.grid(row=3, column=1)
 
-    button_show_edited_graph.grid(row=1, column=1)
-
-def button_create_new_graph():
-    #Aquí creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
-    #donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
-    #la ventana anterior pero con la diferencia que este gráfico está creado desde cero por nosotros mismos
-    button_create_new_graph = tk.Button(root,
-                       text="Create new graph",
-                       command=confirm_new_graph,
-                       activebackground="blue",
-                       activeforeground="white",
-                       anchor="center",
-                       bd=3,
-                       bg="lightgray",
-                       cursor="hand2",
-                       disabledforeground="gray",
-                       fg="black",
-                       font=("Arial", 12),
-                       height=2,
-                       highlightbackground="black",
-                       highlightcolor="green",
-                       highlightthickness=2,
-                       justify="center",
-                       overrelief="raised",
-                       padx=10,
-                       pady=5,
-                       width=15,
-                       wraplength=100)
-    button_create_new_graph.grid(row=2, column=1)
-
-def button_save_graph_info():
-    #Este botón guarda toda la información de un gráfico creado en un documento
-
-    button_save_graph_info = tk.Button(root,
-                        text="Save the information of the graph",
-                        command=print_graph_info,
-                        activebackground="blue",
-                        activeforeground="white",
-                        anchor="center",
-                        bd=3,
-                        bg="lightgray",
-                        cursor="hand2",
-                        disabledforeground="gray",
-                        fg="black",
-                        font=("Arial", 12),
-                        height=2,
-                        highlightbackground="black",
-                        highlightcolor="green",
-                        highlightthickness=2,
-                        justify="center",
-                        overrelief="raised",
-                        padx=10,
-                        pady=5,
-                        width=15,
-                        wraplength=100)
-
-    button_save_graph_info.grid(row=3, column=1)
-
-def button_show_paths():
-    #Este botón hace que se puedan observar todos los caminos posibles de un nodo
-    button_show_paths = tk.Button(root,
+    def button_show_paths():
+        '''Botón que lleva a la opcion de analizar los caminos, ya sean
+        los caminos posibles desde un nodo deseado,
+        o el camino más corto entre un nodo y otro'''
+        button_show_paths = tk.Button(root,
                                       text="Analyze paths",
-                                      command=lambda: [func() for func in (show_paths, find_closest_path)],
+                                      command=lambda: [func() for func in (show_paths, find_closest_path_entries)],
                                       activebackground="blue",
                                       activeforeground="white",
                                       anchor="center",
@@ -606,47 +453,47 @@ def button_show_paths():
                                       width=15,
                                       wraplength=100)
 
-    button_show_paths.grid(row=5, column=1)
+        button_show_paths.grid(row=5, column=1)
 
-def button_show_neighbors():
-    #Este botón hace que se puedan observar todos los nodos vecinos de un nodo
-    button_show_neighbors = tk.Button(root,
-                        text="Show the neighbors of a node",
-                        command=show_neighbors,
-                        activebackground="blue",
-                        activeforeground="white",
-                        anchor="center",
-                        bd=3,
-                        bg="lightgray",
-                        cursor="hand2",
-                        disabledforeground="gray",
-                        fg="black",
-                        font=("Arial", 12),
-                        height=3,
-                        highlightbackground="black",
-                        highlightcolor="green",
-                        highlightthickness=2,
-                        justify="center",
-                        overrelief="raised",
-                        padx=10,
-                        pady=5,
-                        width=15,
-                        wraplength=100)
+    def button_show_neighbors():
+        '''Botón para ver los vecinos de un nodo'''
+        button_show_neighbors = tk.Button(root,
+                                          text="Show the neighbors of a node",
+                                          command=show_neighbors,
+                                          activebackground="blue",
+                                          activeforeground="white",
+                                          anchor="center",
+                                          bd=3,
+                                          bg="lightgray",
+                                          cursor="hand2",
+                                          disabledforeground="gray",
+                                          fg="black",
+                                          font=("Arial", 12),
+                                          height=3,
+                                          highlightbackground="black",
+                                          highlightcolor="green",
+                                          highlightthickness=2,
+                                          justify="center",
+                                          overrelief="raised",
+                                          padx=10,
+                                          pady=5,
+                                          width=15,
+                                          wraplength=100)
 
-    button_show_neighbors.grid(row=4, column=1)
+        button_show_neighbors.grid(row=4, column=1)
 
-button_show_original_graph()
-button_show_edited_graph()
-button_create_new_graph()
-button_save_graph_info()
-button_show_paths()
-button_show_neighbors()
+    button_show_original_graph()
+    button_show_edited_graph()
+    button_create_new_graph()
+    button_save_graph_info()
+    button_show_paths()
+    button_show_neighbors()
 
 def Entries():
     '''Cada una de las entradas de texto que usaremos en el menú principal
     de nuestra aplicación. si llevan tk.Label son únicamente texto,
-    mientras que si llevan tk. Entry son entradas de texto donde debemos escribir.
-    Si llevan tk.Button son botones para presionar y llevar acabo una acción o comando.'''
+    mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
+    Si llevan tk.Button son botones para presionar y llevar a cabo una acción o comando.'''
     global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
@@ -662,13 +509,13 @@ def Entries():
 
 
     e_file = tk.Entry(root) #Primer entry
-    e_name = tk.Entry(root) #New_node nombre
-    e_x = tk.Entry(root) #New_node valor x
-    e_y = tk.Entry(root) #New_node valor y
-    e_from = tk.Entry(root) #Origen new_segment
-    e_to = tk.Entry(root) #Destino new_segment
-    e_delete_n = tk.Entry(root) #Delete node
-    e_delete_s = tk.Entry(root) #Delete origin segment
+    e_name = tk.Entry(root) #Nombre del nuevo nodo
+    e_x = tk.Entry(root) #Valor X del nuevo nodo
+    e_y = tk.Entry(root) #Valor Y del nuevo nodo
+    e_from = tk.Entry(root) #Nodo origen del nuevo segmento
+    e_to = tk.Entry(root) #Nodo destino del nuevo segmento
+    e_delete_n = tk.Entry(root) #Nombre del nodo a borrar
+    e_delete_s = tk.Entry(root) #Nombre del segmento a borrar
 
     e_file.grid(row=0, column=3)
     e_name.grid(row=1, column=3)
@@ -680,7 +527,7 @@ def Entries():
     e_delete_s.grid(row=10, column=3)
 
     def entry1(event=None):
-        #Lee el texto de un documento determinado y nos muestra dicho gráfico
+        '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         global G, edited_G, current_display_mode
         try:
             new_graph = read_file(e_file.get())
@@ -696,6 +543,7 @@ def Entries():
                 e_file.delete(0, 'end')
         except FileNotFoundError:
             show_message(f"File not found: {e_file.get()}", is_error=True)
+            e_file.delete(0, 'end')
         except Exception as e:
             show_message(f"Error loading file: {str(e)}", is_error=True)
 
@@ -714,6 +562,7 @@ def Entries():
             y = float(y_str)
         except ValueError:
             show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
+            # Limpiamos las entradas de texto
             e_x.delete(0, 'end')
             e_y.delete(0, 'end')
             return
@@ -747,12 +596,11 @@ def Entries():
             e_to.delete(0, 'end')
             return
         e_seg = f"{e_name_from}{e_name_to}"
-        '''Creamos el nombre del segmento (vector) 
-                a partir del nodo destino  del nodo final'''
-        #e_seg1 = f"{e_name_to}{e_name_from}"
-        '''Creamos el otro vector (AB - BA)'''
+        #Creamos el nombre del segmento (vector)
+        #a partir del nodo destino del nodo final
+        #Creamos el otro vector (AB - BA)
         segment_exists = any(
-            (s.name == e_seg) #or s.name == e_seg1)
+            (s.name == e_seg)
             for s in edited_G.segments)
         if segment_exists:
             show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
@@ -760,13 +608,11 @@ def Entries():
             e_to.delete(0, 'end')
             return
         AddSegment(edited_G, e_seg, e_name_from, e_name_to)
-        #AddSegment(edited_G, e_seg1, e_name_to, e_name_from)
         e_from.delete(0, 'end')
         e_to.delete(0, 'end')
-        '''Añadimos estos segmentos a nuestro gráfico y fuente de información'''
+        #Añadimos estos segmentos a nuestro gráfico y fuente de información
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
-        '''Limpiamos las entradas de texto'''
         show_graph_1()
 
     def delete_node(event=None):
@@ -797,7 +643,7 @@ def Entries():
             return
         segment_to_delete = None
         for seg in edited_G.segments:
-            if seg.name == segment_name: #for seg.name == segment_name[::-1]:
+            if seg.name == segment_name:
                 segment_to_delete = seg
                 break
         if not segment_to_delete:
@@ -808,32 +654,6 @@ def Entries():
         show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         show_graph_1()
-
-    '''def button4():
-        button4 = tk.Button(root,
-                            text="Entry",
-                            command=(entry2),
-                            activebackground="blue",
-                            activeforeground="white",
-                            anchor="center",
-                            bd=3,
-                            bg="lightgray",
-                            cursor="hand2",
-                            disabledforeground="gray",
-                            fg="black",
-                            font=("Arial", 12),
-                            height=2,
-                            highlightbackground="black",
-                            highlightcolor="green",
-                            highlightthickness=2,
-                            justify="center",
-                            overrelief="raised",
-                            padx=10,
-                            pady=5,
-                            width=5,
-                            wraplength=100)
-
-        button4.grid(row=1, column=4)'''
 
     file_entries = [e_file]
     work_with_entry(file_entries, entry1)
@@ -850,10 +670,11 @@ def Entries():
     tk.Button(root, text="Add Segment", command=add_segment, cursor="hand2").grid(row=7, column=3)
     tk.Button(root, text="Delete Node", command=delete_node, cursor="hand2").grid(row=9, column=3)
     tk.Button(root, text='Delete Segment', command=delete_segment, cursor='hand2').grid(row=13, column=3)
-    '''Botones para llevar acabo acciones determinadas anteriormente, el cursor
-    se transforma en una mano (hand2) al pasar por encima'''
+    #Botones para llevar acabo acciones determinadas anteriormente, el cursor
+    #se transforma en una mano (hand2) al pasar por encima
     root.state('zoomed')
 
+Buttons()
 Entries()
 
 root.mainloop()
