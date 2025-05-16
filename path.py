@@ -10,7 +10,8 @@ message_label = None
 clear_timer = None
 fig = Figure(figsize=(8.5, 7), dpi=100)
 ax = fig.add_subplot(111)
-canvas = None
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 def set_graph(graph_instance):
     global G
@@ -148,7 +149,7 @@ def finding_shortest_path(graph, start_node, end_node):
             continue
 
         for neighbor in current_node.neighbors:
-            # Find the segment
+            # Buscamos el segmento
             segment = None
             for s in graph.segments:
                 if s.origin == current_node and s.destination == neighbor:
@@ -185,7 +186,7 @@ def find_closest_path():
     e_path_to = tk.Entry(root)
     e_path_to.grid(row=3, column=3)
 
-    def search_closest_path():
+    def search_closest_path(event=None):
         """Finds the shortest path between two nodes"""
         node_from = e_path_from.get().strip()
         node_to = e_path_to.get().strip()
@@ -212,6 +213,9 @@ def find_closest_path():
         e_path_to.delete(0, 'end')
         e_path_from.delete(0, 'end')
 
+    e_path_from.bind('<Return>', search_closest_path)
+    e_path_to.bind('<Return>', search_closest_path)
+
     search_btn = tk.Button(
         root,
         text='Find closest path',
@@ -230,7 +234,7 @@ def show_paths():
     e_paths = tk.Entry(root)
     e_paths.grid(row=0, column=3)
 
-    def search_paths():
+    def search_paths(event=None):
         node_name = e_paths.get().strip()
         if not node_name:
             show_message("Please enter a node name", is_error=True)
@@ -238,6 +242,7 @@ def show_paths():
         highlight_paths(node_name)
         e_paths.delete(0, 'end')
 
+    e_paths.bind('<Return>', search_paths)
     search_btn = tk.Button(
         root,
         text='Show paths',
@@ -272,7 +277,7 @@ def highlight_paths(node_name):
                 visited.add(neighbor)
                 queue.append(neighbor)
 
-    # Draw nodes
+    # Dibuja,os los nodos
     for node in G.nodes:
         color = 'gray'
         if node == start_node:
@@ -283,7 +288,7 @@ def highlight_paths(node_name):
         ax.text(node.x, node.y, node.name,
                 color='black', ha='left', va='bottom', zorder=4)
 
-    # Draw segments
+    # Dibujamos los segmentos
     for seg in G.segments:
         dx = seg.destination.x - seg.origin.x
         dy = seg.destination.y - seg.origin.y
