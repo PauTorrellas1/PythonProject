@@ -202,3 +202,4 @@ def DeleteSegment(graph, segment_name):
         graph.segments.remove(segment_to_delete)
         return True
     return False
+

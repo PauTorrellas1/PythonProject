@@ -6,6 +6,7 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 from tkinter import messagebox
 import heapq
 import time
+import math
 
 root = tk.Tk()
 current_display_mode = "edited"
@@ -16,6 +17,67 @@ fig = Figure(figsize=(8.5, 7), dpi=100)
 ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=root)
 canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+
+
+class Path:
+    def __init__(self, name: str, origin: Node, destination: Node = None, cost: float = 0):
+        '''Definimos la clase path, compuesta por un nombre, un nodo origen, un nodo final y el coste del camino.'''
+        self.name = name
+        self.origin = origin
+        self.destination = destination
+        self.cost = cost
+        self.nodes = [origin]  # List of nodes in order
+        self.segments = []  # List of segments in order
+        self.cumulative_costs = {origin: 0}  # Cumulative costs from origin to each node
+
+    def AddNodeToPath(self, node: Node, segment: Segment):
+        '''Adds a node to the path with its connecting segment'''
+        if node not in self.nodes:
+            self.nodes.append(node)
+            self.segments.append(segment)
+            last_node = self.nodes[-2]
+            self.cumulative_costs[node] = self.cumulative_costs[last_node] + segment.cost
+            self.destination = node
+            self.cost = self.cumulative_costs[node]
+
+    def ContainsNode(self, node: Node) -> bool:
+        '''Returns True if the Node is in the Path and False otherwise.'''
+        return node in self.nodes
+
+    def CostToNode(self, node: Node) -> float:
+        '''Returns the total cost from the origin of the Path to the Node.
+        Returns -1 if the Node is not in the Path.'''
+        return self.cumulative_costs.get(node, -1)
+
+def PlotPath(graph: Graph, path: Path):
+    '''Plots the Path in the Graph'''
+    global fig, ax, canvas
+    ax.clear()
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
+    ax.set_axisbelow(True)
+    for node in graph.nodes:
+        color = 'gray'
+        if node == path.origin:
+            color = 'blue'
+        elif node == path.destination:
+            color = 'red'
+        elif path.ContainsNode(node):
+            color = 'green'
+        ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
+        ax.text(node.x, node.y, node.name, fontsize=10, zorder=4)
+    for seg in graph.segments:
+        is_path_segment = False
+        for path_seg in path.segments:
+            if (seg.origin == path_seg.origin and seg.destination == path_seg.destination):
+                is_path_segment = True
+                break
+        if is_path_segment:
+            draw_segment(seg, color='red', width=2, zorder=2)
+        else:
+            draw_segment(seg, color='#CCCCCC', width=1, zorder=1)
+    canvas.draw()
+    show_message(
+        f"Displaying path '{path.name}' from {path.origin.name} to {path.destination.name} (Cost: {path.cost:.2f})")
 
 def set_graph(graph_instance):
     '''Esta función especifica qué codigo será el que mostraremos'''
@@ -28,7 +90,7 @@ def work_with_entry(controls, function):
     for i, control in enumerate(controls):
         if i < len(controls) - 1:
             if isinstance(control, tk.Entry):
-                control.bind('<Return>', lambda e, n=controls[i+1]: n.focus_set())
+                control.bind('<Return>', lambda e, n=controls[i + 1]: n.focus_set())
         else:
             if isinstance(control, tk.Entry):
                 control.bind('<Return>', lambda e: function())
@@ -36,18 +98,15 @@ def work_with_entry(controls, function):
 def create_message_area():
     """Crea un mensaje que se muestre al final de la GUI"""
     global message_label
-
     message_frame = tk.Frame(root)
     message_frame.grid(row=20, column=1, columnspan=5, sticky="ew", padx=10, pady=5)
-
     message_label = tk.Label(
         message_frame,
         text="",
         fg="black",
         wraplength=1000,
         justify="left",
-        anchor="w"
-    )
+        anchor="w")
     message_label.pack(fill="x", expand=True)
 
 def show_message(message, is_error=False, persistent=False):
@@ -112,7 +171,7 @@ def show_message(message, is_error=False, persistent=False):
         error_window.transient(root)
 
     def clear_message(delay=0):
-        """Borramos el mensaje despues de un delay"""
+        """Borramos el mensaje después de un delay"""
 
         def clear():
             message_label.config(text="")
@@ -208,46 +267,21 @@ def find_closest_path_entries():
             path.insert(0, current)
             current = previous_nodes.get(current, None)
         if distances[end_node] != float('inf'):
-            return path, distances[end_node]
-        else:
-            return None, None
-
-    def highlight_path(path):
-        """Remarcamos los caminos mostrados en la GUI"""
-        ax.clear()
-        ax.grid(True, which='both', linestyle='--', linewidth=0.7, color='#AA336A')
-        ax.set_axisbelow(True)
-        for node in G.nodes:
-            color = 'gray'
-            if node in path:
-                color = 'green' if node != path[0] and node != path[-1] else 'blue'
-            ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=4)
-            ax.text(node.x, node.y, node.name, fontsize=10, zorder=5)
-        path_segments = set()
-        for i in range(len(path) - 1):
-            from_node = path[i]
-            to_node = path[i + 1]
-            path_segments.add((from_node.name, to_node.name))
-            path_segments.add((to_node.name, from_node.name))
-        for seg in G.segments:
-            if (seg.origin.name, seg.destination.name) not in path_segments:
-                draw_segment(seg, color='#CCCCCC', width=1, zorder=1)
-        for i in range(len(path) - 1):
-            from_node = path[i]
-            to_node = path[i + 1]
-            seg = None
-            for s in G.segments:
-                if s.origin == from_node and s.destination == to_node:
-                    seg = s
-                    break
-            if seg:
-                draw_segment(seg, color='red', width=2, zorder=3)
-            else:
-                for s in G.segments:
-                    if s.origin == to_node and s.destination == from_node:
-                        draw_segment(s, color='red', width=2, zorder=3, reverse=True)
+            path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
+            for i in range(len(path) - 1):
+                from_node = path[i]
+                to_node = path[i + 1]
+                for seg in graph.segments:
+                    if seg.origin == from_node and seg.destination == to_node:
+                        path_obj.AddNodeToPath(to_node, seg)
                         break
-        canvas.draw()
+            return path_obj
+        else:
+            return None
+
+    def highlight_path(path_obj):
+        """Remarcamos los caminos mostrados en la GUI usando el objeto Path"""
+        PlotPath(G, path_obj)
 
     def search_closest_path(event=None):
         """Guarda la información introducida en las entradas anteriores"""
@@ -263,36 +297,34 @@ def find_closest_path_entries():
             show_message(f"Node '{node_to}' doesn't exist", is_error=True)
             e_path_to.delete(0, 'end')
             return
-        path, total_distance = finding_shortest_path(G, from_node, to_node)
-        if path:
-            path_names = " → ".join([node.name for node in path])
-            highlight_path(path)
-            show_message(f"Shortest path from {node_from} to {node_to}: {path_names} (Distance: {total_distance:.2f})")
+        path_obj = finding_shortest_path(G, from_node, to_node)
+        if path_obj:
+            path_names = " → ".join([node.name for node in path_obj.nodes])
+            highlight_path(path_obj)
+            show_message(f"Shortest path from {node_from} to {node_to}: {path_names} (Distance: {path_obj.cost:.2f})")
         else:
             show_message(f"No path exists from {node_from} to {node_to}", is_error=True)
         e_path_to.delete(0, 'end')
         e_path_from.delete(0, 'end')
-
     path_shortest = [e_path_from, e_path_to]
     work_with_entry(path_shortest, search_closest_path)
     search_btn = tk.Button(
         root,
         text='Find closest path',
         command=search_closest_path,
-        cursor='hand2'
-    )
+        cursor='hand2')
     search_btn.grid(row=4, column=3)
 
 def show_paths():
     """Muestra todos los posibles caminos de un nodo establecido"""
     for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) not in (1, 5):  #Borramos todos lo widgets (entradas) anteriores
+        if widget.grid_info().get("column", 0) not in (1, 5):  # Borramos todos lo widgets (entradas) anteriores
             widget.destroy()
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_paths = tk.Entry(root)
     e_paths.grid(row=0, column=3)
 
-    def highlight_paths(node_name):
+    def PlotAllPaths(node_name):
         '''Resalta todos los caminos de un nodo establecido con anterioridad'''
         global fig, ax, canvas, G
         ax.clear()
@@ -351,14 +383,16 @@ def show_paths():
         canvas.draw()
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
         show_message(f"Showing paths from node {node_name}")
+
     def search_paths(event=None):
         '''Guardamos la información introducida en las entradas'''
         node_name = e_paths.get().strip()
         if not node_name:
             show_message("Please enter a node name", is_error=True)
             return
-        highlight_paths(node_name)
+        PlotAllPaths(node_name)
         e_paths.delete(0, 'end')
+
     paths_entry = [e_paths]
     work_with_entry(paths_entry, search_paths)
     search_btn = tk.Button(
@@ -367,6 +401,4 @@ def show_paths():
         command=lambda: search_paths(),
         cursor='hand2')
     search_btn.grid(row=0, column=4)
-
-
 
