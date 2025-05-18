@@ -171,85 +171,70 @@ def print_graph_info():
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
 
+
 def show_neighbors():
-    '''Esta función nos muestra a todos los vecinos de un nodo'''
+    '''Show neighbors of a node with clean lines and no arrows'''
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
+
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
-    def search_and_clear(event=None):
-        '''Limpiamos la entrada de texto donde escribimos el nodoa estudiar'''
-        node_name = e_neighbor.get().strip()
-        highlight_neighbors(node_name)
-        e_neighbor.delete(0, 'end')
-    e_neighbor.bind('<Return>', search_and_clear)
-    search_btn = tk.Button(
-        root,
-        text='Show Neighbors',
-        command=lambda: search_and_clear(),
-        cursor='hand2'
-    )
-    search_btn.grid(row=0, column=4)
 
     def highlight_neighbors(node_name):
-        '''Esta función resalta los vecinos de un nodo'''
         global fig, ax, canvas
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
         ax.set_axisbelow(True)
+
         node_name = node_name.strip()
         if not node_name:
             show_message("Enter a node name", is_error=True)
             return
+
         node = SearchNode(G, node_name)
         if not node:
             show_message(f"Node '{node_name}' doesn't exist", is_error=True)
             return
+
         if not node.neighbors:
             show_message(f"Node '{node_name}' has no neighbors", is_error=True)
             return
-        for seg in G.segments:
-            dx = seg.destination.x - seg.origin.x
-            dy = seg.destination.y - seg.origin.y
-            length = math.sqrt(dx ** 2 + dy ** 2)
-            if length > 0:
-                dx /= length
-                dy /= length
-        for neighbor in node.neighbors:
-            seg = next((s for s in G.segments if
-                        s.origin == node and s.destination == neighbor), None)
-            if seg:
-                dx = neighbor.x - node.x
-                dy = neighbor.y - node.y
-                length = math.sqrt(dx ** 2 + dy ** 2)
-                if length > 0:
-                    dx /= length
-                    dy /= length
-                ax.plot([node.x, neighbor.x],
-                        [node.y, neighbor.y],
-                        'r-', linewidth=2)
-                ax.arrow(node.x, node.y,
-                         dx * 0.95 * length, dy * 0.95 * length,
-                         head_width=0.5, head_length=0.5,
-                         fc='red', ec='red',
-                         length_includes_head=True)
+
+        # Draw all nodes first
         for n in G.nodes:
-            color = 'gray'
+            color = 'black'  # Default color
             if n == node:
-                color = 'blue'
+                color = 'blue'  # Center node
             elif n in node.neighbors:
-                color = 'green'
+                color = 'green'  # Neighbors
+
             ax.plot(n.x, n.y, 'o', color=color, markersize=8)
             ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
-        ax.plot(node.x, node.y, 'blue', markersize=8)
-        ax.text(node.x, node.y, node.name, color='black', ha='left', va='bottom')
-        if 'canvas' in globals() and canvas:
-            canvas.get_tk_widget().destroy()
-        canvas = FigureCanvasTkAgg(fig, master=root)
+
+        # Draw connections to neighbors (simple lines)
+        for neighbor in node.neighbors:
+            ax.plot([node.x, neighbor.x],
+                    [node.y, neighbor.y],
+                    'g-', linewidth=1.5)  # Green connection lines
+
         canvas.draw()
-        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+        show_message(f"Showing neighbors of node {node_name}")
+
+    def search_and_clear(event=None):
+        node_name = e_neighbor.get().strip()
+        highlight_neighbors(node_name)
+        e_neighbor.delete(0, 'end')
+
+    e_neighbor.bind('<Return>', search_and_clear)
+    search_btn = tk.Button(
+        root,
+        text='Show Neighbors',
+        command=search_and_clear,
+        cursor='hand2'
+    )
+    search_btn.grid(row=0, column=4)
 
 def create_new_graph():
     '''Esta función crea un gráfico en blanco'''
