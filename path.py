@@ -56,7 +56,7 @@ def PlotPath(graph: Graph, path: Path):
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
 
-    # Draw all nodes
+    # Draw all nodes from the provided graph
     for node in graph.nodes:
         color = 'gray'
         if node == path.origin:
@@ -68,7 +68,7 @@ def PlotPath(graph: Graph, path: Path):
         ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
         ax.text(node.x, node.y, node.name, fontsize=10, zorder=4)
 
-    # Draw all segments with costs
+    # Draw all segments from the provided graph
     for seg in graph.segments:
         is_path_segment = any(
             (seg.origin == path_seg.origin and seg.destination == path_seg.destination)
@@ -222,16 +222,16 @@ def draw_segment(seg, color, width, zorder, reverse=False):
         dy /= length
         if not reverse:
             ax.arrow(seg.origin.x, seg.origin.y,
-                     dx * 0.95 * length, dy * 0.95 * length,
-                     head_width=0.5, head_length=0.5,
+                     dx * 0.99 * length, dy * 0.99 * length,
+                     head_width=0.1, head_length=0.1,
                      fc=color, ec=color,
                      length_includes_head=True,
                      linewidth=width,
                      zorder=zorder)
         else:
             ax.arrow(seg.destination.x, seg.destination.y,
-                     -dx * 0.95 * length, -dy * 0.95 * length,
-                     head_width=0.5, head_length=0.5,
+                     -dx * 0.99 * length, -dy * 0.99 * length,
+                     head_width=0.1, head_length=0.1,
                      fc=color, ec=color,
                      length_includes_head=True,
                      linewidth=width,
@@ -255,31 +255,38 @@ def find_closest_path_entries():
         distances[start_node] = 0
         priority_queue = []
         heapq.heappush(priority_queue, (0, start_node.name, start_node))
+
         while priority_queue:
             current_distance, _, current_node = heapq.heappop(priority_queue)
             if current_node == end_node:
                 break
             if current_distance > distances[current_node]:
                 continue
+
             for neighbor in current_node.neighbors:
-                # Buscamos el segmento
+                # Find the connecting segment
                 segment = None
                 for s in graph.segments:
                     if s.origin == current_node and s.destination == neighbor:
                         segment = s
                         break
+
                 if not segment:
                     continue
+
                 distance = current_distance + segment.cost
                 if distance < distances[neighbor]:
                     distances[neighbor] = distance
                     previous_nodes[neighbor] = current_node
                     heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+
+        # Reconstruct path
         path = []
         current = end_node
         while current is not None:
             path.insert(0, current)
             current = previous_nodes.get(current, None)
+
         if distances[end_node] != float('inf'):
             path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
             for i in range(len(path) - 1):
@@ -290,8 +297,7 @@ def find_closest_path_entries():
                         path_obj.AddNodeToPath(to_node, seg)
                         break
             return path_obj
-        else:
-            return None
+        return None
 
     def highlight_path(path_obj):
         """Remarcamos los caminos mostrados en la GUI usando el objeto Path"""
@@ -299,6 +305,7 @@ def find_closest_path_entries():
 
     def search_closest_path(event=None):
         """Guarda la información introducida en las entradas anteriores"""
+        global G  # Use the current graph
         node_from = e_path_from.get().strip()
         node_to = e_path_to.get().strip()
         from_node = SearchNode(G, node_from)
@@ -311,7 +318,7 @@ def find_closest_path_entries():
             show_message(f"Node '{node_to}' doesn't exist", is_error=True)
             e_path_to.delete(0, 'end')
             return
-        path_obj = finding_shortest_path(G, from_node, to_node)
+        path_obj = finding_shortest_path(G, from_node, to_node)  # Pass the current graph
         if path_obj:
             path_names = " → ".join([node.name for node in path_obj.nodes])
             highlight_path(path_obj)
@@ -329,10 +336,13 @@ def find_closest_path_entries():
         cursor='hand2')
     search_btn.grid(row=4, column=3)
 
+
 def show_paths():
     """Muestra todos los posibles caminos de un nodo establecido"""
+    global G  # Make sure we're using the current graph
+
     for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) not in (1, 5):  # Borramos todos lo widgets (entradas) anteriores
+        if widget.grid_info().get("column", 0) not in (1, 5):
             widget.destroy()
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_paths = tk.Entry(root)
@@ -340,7 +350,7 @@ def show_paths():
 
     def PlotAllPaths(node_name):
         '''Resalta todos los caminos de un nodo establecido con anterioridad'''
-        global fig, ax, canvas, G
+        global fig, ax, canvas, G  # Use the current graph
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
         ax.set_axisbelow(True)
@@ -386,7 +396,7 @@ def show_paths():
                     z = 1
                 ax.arrow(seg.origin.x, seg.origin.y,
                          dx * 0.95 * length, dy * 0.95 * length,
-                         head_width=0.5, head_length=0.5,
+                         head_width=0.1, head_length=0.3,
                          fc=arrow_color, ec=arrow_color,
                          length_includes_head=True,
                          width=0.001,

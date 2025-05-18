@@ -64,7 +64,7 @@ def show_new_graph():
 
     # Draw nodes
     for node in G.nodes:
-        ax.plot(node.x, node.y, 'ko', markersize=5)
+        ax.plot(node.x, node.y, 'ko', markersize=3)
         ax.text(node.x, node.y, node.name, fontsize=7, color= 'black')
 
     if canvas is None:
@@ -173,17 +173,23 @@ def print_graph_info():
 
 
 def show_neighbors():
-    '''Show neighbors of a node with clean lines and no arrows'''
+    '''Esta función nos muestra a todos los vecinos de un nodo'''
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
 
+    def search_and_clear(event=None):
+        '''Limpiamos la entrada de texto donde escribimos el nodoa estudiar'''
+        node_name = e_neighbor.get().strip()
+        highlight_neighbors(node_name)
+        e_neighbor.delete(0, 'end')
+
     def highlight_neighbors(node_name):
-        global fig, ax, canvas
+        '''Esta función resalta los vecinos de un nodo'''
+        global fig, ax, canvas, G
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
         ax.set_axisbelow(True)
@@ -193,7 +199,7 @@ def show_neighbors():
             show_message("Enter a node name", is_error=True)
             return
 
-        node = SearchNode(G, node_name)
+        node = SearchNode(G, node_name)  # Use the current graph G
         if not node:
             show_message(f"Node '{node_name}' doesn't exist", is_error=True)
             return
@@ -204,34 +210,46 @@ def show_neighbors():
 
         # Draw all nodes first
         for n in G.nodes:
-            color = 'black'  # Default color
+            color = 'gray'
             if n == node:
-                color = 'blue'  # Center node
+                color = 'blue'
             elif n in node.neighbors:
-                color = 'green'  # Neighbors
-
+                color = 'green'
             ax.plot(n.x, n.y, 'o', color=color, markersize=8)
             ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
 
-        # Draw connections to neighbors (simple lines)
+        # Draw connections to neighbors
         for neighbor in node.neighbors:
-            ax.plot([node.x, neighbor.x],
-                    [node.y, neighbor.y],
-                    'g-', linewidth=1.5)  # Green connection lines
+            seg = None
+            for s in G.segments:
+                if (s.origin == node and s.destination == neighbor) or (s.origin == neighbor and s.destination == node):
+                    seg = s
+                    break
 
+            if seg:
+                dx = neighbor.x - node.x
+                dy = neighbor.y - node.y
+                length = math.sqrt(dx ** 2 + dy ** 2)
+                if length > 0:
+                    dx /= length
+                    dy /= length
+                    ax.arrow(node.x, node.y,
+                             dx * 0.95 * length, dy * 0.95 * length,
+                             head_width=0.5, head_length=0.5,
+                             fc='red', ec='red',
+                             length_includes_head=True)
+
+        if 'canvas' in globals() and canvas:
+            canvas.get_tk_widget().destroy()
+        canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.draw()
-        show_message(f"Showing neighbors of node {node_name}")
-
-    def search_and_clear(event=None):
-        node_name = e_neighbor.get().strip()
-        highlight_neighbors(node_name)
-        e_neighbor.delete(0, 'end')
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
     e_neighbor.bind('<Return>', search_and_clear)
     search_btn = tk.Button(
         root,
         text='Show Neighbors',
-        command=search_and_clear,
+        command=lambda: search_and_clear(),
         cursor='hand2'
     )
     search_btn.grid(row=0, column=4)
@@ -512,9 +530,9 @@ def Entries():
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G
-                set_graph(G)  # Explicitly set the graph for path operations
+                set_graph(G)  # Make sure to update the graph reference in path.py
                 current_display_mode = "edited"
-                show_new_graph()  # Use this instead of show_graph_1() to ensure consistency
+                show_graph_1()
                 show_message(f"Successfully loaded graph from {e_file.get()}")
                 e_file.delete(0, 'end')
             else:

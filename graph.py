@@ -160,7 +160,7 @@ def read_file(Nfile: str):
     return G
 
 def read_map_file(region: str):
-    standard_regions = {'Catalunya': 'Cat', 'España': 'Esp', 'Europa': 'Eur'}
+    standard_regions = {'Catalunya': 'Cat', 'España': 'Spain', 'Europa': 'ECAC'}
     if region in standard_regions:
         prefix = standard_regions[region]
         try:
