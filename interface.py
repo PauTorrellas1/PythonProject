@@ -64,8 +64,8 @@ def show_new_graph():
 
     # Draw nodes
     for node in G.nodes:
-        ax.plot(node.x, node.y, 'ro', markersize=8)
-        ax.text(node.x, node.y, node.name, fontsize=10)
+        ax.plot(node.x, node.y, 'ko', markersize=5)
+        ax.text(node.x, node.y, node.name, fontsize=7, color= 'black')
 
     if canvas is None:
         canvas = FigureCanvasTkAgg(fig, master=root)
@@ -527,8 +527,9 @@ def Entries():
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G
+                set_graph(G)  # Explicitly set the graph for path operations
                 current_display_mode = "edited"
-                show_graph_1()
+                show_new_graph()  # Use this instead of show_graph_1() to ensure consistency
                 show_message(f"Successfully loaded graph from {e_file.get()}")
                 e_file.delete(0, 'end')
             else:
