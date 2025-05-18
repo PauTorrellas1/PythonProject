@@ -1,4 +1,5 @@
 from segment import *
+from airSpace import *
 import matplotlib.pyplot as p
 
 
@@ -159,63 +160,53 @@ def read_file(Nfile: str):
                 AddSegment(G, name, n1, n2)
     return G
 
-def read_map_file(region: str):
+
+def read_map_file(region: str) -> AirSpace:
     standard_regions = {'Catalunya': 'Cat', 'España': 'Spain', 'Europa': 'ECAC'}
     if region in standard_regions:
         prefix = standard_regions[region]
         try:
-            id_to_name = {}
-            name_to_node = {}
+            airspace = AirSpace()
+            id_to_point = {}
+
+            # Read navigation points
             with open(f'{prefix}_nav.txt', 'r') as f:
                 for line in f:
                     parts = line.strip().split()
                     if len(parts) >= 4:
-                        node_id, name, lat, lon = parts[:4]
-                        id_to_name[node_id] = name
-            airport_nodes = set()
+                        node_id = int(parts[0])
+                        name = parts[1]
+                        lat = float(parts[2])
+                        lon = float(parts[3])
+                        nav_point = NavPoint(node_id, name, lat, lon)
+                        airspace.nav_points.append(nav_point)
+                        id_to_point[node_id] = nav_point
+
+            # Read airports
             with open(f'{prefix}_aer.txt', 'r') as f:
                 for line in f:
                     name = line.strip()
                     if name:
-                        airport_nodes.add(name)
-            G = Graph()
-            with open(f'{prefix}_nav.txt', 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) >= 4:
-                        node_id, name, lat, lon = parts[:4]
-                        node = Node(name, float(lon), float(lat))
-                        AddNode(G, node)
-                        name_to_node[name] = node
-            successful = 0
+                        airport = NavAirport(name)
+                        airspace.nav_airports.append(airport)
+
+            # Read segments
             with open(f'{prefix}_seg.txt', 'r') as f:
                 for line in f:
                     parts = line.strip().split()
                     if len(parts) >= 3:
-                        origin_id, dest_id, distance = parts[:3]
-                        origin_name = id_to_name.get(origin_id)
-                        dest_name = id_to_name.get(dest_id)
-                        if origin_name and dest_name:
-                            origin_node = name_to_node.get(origin_name)
-                            dest_node = name_to_node.get(dest_name)
-                            if origin_node and dest_node:
-                                seg_name = f"{origin_name}_{dest_name}"
-                                segment = Segment(seg_name, origin_node, dest_node)
-                                segment.cost = float(distance)
-                                G.segments.append(segment)
-                                AddNeighbor(origin_node, dest_node)
-                                successful += 1
-                            else:
-                                print(f"Node objects not found: {origin_name} -> {dest_name}")
-                        else:
-                            print(f"Names not found for IDs: {origin_id} -> {dest_id}")
-            print(f"Successfully connected {successful} segments")
-            return G
+                        origin_id = int(parts[0])
+                        dest_id = int(parts[1])
+                        distance = float(parts[2])
+                        nav_segment = NavSegment(origin_id, dest_id, distance)
+                        airspace.nav_segments.append(nav_segment)
+
+            return airspace
         except Exception as e:
-            print(f"Error: {str(e)}")
-            return read_file(region)
+            print(f"Error reading files: {str(e)}")
+            return None
     else:
-        return read_file(region)
+        return None
 
 def CreateNode(g,name,x,y):
     '''Esta función crea un node y lo añade a Node'''

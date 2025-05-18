@@ -1,4 +1,5 @@
 from path import *
+import matplotlib as plt
 
 def CreateGraph_1 ():
     '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
@@ -92,6 +93,86 @@ path_info_text = tk.Text(
     fg="black",
     relief=tk.FLAT)
 path_info_text.pack(fill=tk.BOTH, expand=True)
+
+
+def plot_airspace(airspace: AirSpace):
+    """Plot the entire airspace using only the provided classes"""
+    plt.figure(figsize=(10, 8))
+
+    # Plot all points
+    for point in airspace.nav_points:
+        plt.plot(point.longitude, point.latitude, 'ro')
+        plt.text(point.longitude + 0.1, point.latitude + 0.1, point.name, fontsize=8)
+
+    # Plot all segments
+    for segment in airspace.nav_segments:
+        origin = next((p for p in airspace.nav_points if p.number == segment.origin_number), None)
+        dest = next((p for p in airspace.nav_points if p.number == segment.destination_number), None)
+        if origin and dest:
+            plt.plot([origin.longitude, dest.longitude],
+                     [origin.latitude, dest.latitude],
+                     'b-')
+            # Add distance label
+            plt.text((origin.longitude + dest.longitude) / 2,
+                     (origin.latitude + dest.latitude) / 2,
+                     f"{segment.distance:.1f}",
+                     fontsize=8)
+
+    # Plot airports with special markers
+    for airport in airspace.nav_airports:
+        point = get_node_by_name(airspace, airport.name)
+        if point:
+            plt.plot(point.longitude, point.latitude, 'g^', markersize=10)
+
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.grid(True)
+    plt.title("Airspace Visualization")
+    plt.show()
+
+
+def plot_path(airspace: AirSpace, path_result):
+    """Highlight a specific path on the airspace plot"""
+    plt.figure(figsize=(10, 8))
+
+    # Plot all points
+    for point in airspace.nav_points:
+        color = 'gray'
+        if point.name == path_result['start']:
+            color = 'blue'
+        elif point.name == path_result['end']:
+            color = 'red'
+        elif point.name in path_result['path']:
+            color = 'green'
+
+        plt.plot(point.longitude, point.latitude, 'o', color=color)
+        plt.text(point.longitude + 0.1, point.latitude + 0.1, point.name, fontsize=8)
+
+    # Plot all segments
+    for segment in airspace.nav_segments:
+        origin = next((p for p in airspace.nav_points if p.number == segment.origin_number), None)
+        dest = next((p for p in airspace.nav_points if p.number == segment.destination_number), None)
+        if origin and dest:
+            is_path_segment = any(
+                seg.origin_number == segment.origin_number and
+                seg.destination_number == segment.destination_number
+                for seg in path_result['segments']
+            )
+
+            if is_path_segment:
+                plt.plot([origin.longitude, dest.longitude],
+                         [origin.latitude, dest.latitude],
+                         'r-', linewidth=2)
+            else:
+                plt.plot([origin.longitude, dest.longitude],
+                         [origin.latitude, dest.latitude],
+                         'b-', alpha=0.3)
+
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    plt.grid(True)
+    plt.title(f"Path from {path_result['start']} to {path_result['end']} (Distance: {path_result['distance']:.1f})")
+    plt.show()
 
 def show_graph():
     '''Función que nos muestra el grafo original'''

@@ -34,7 +34,6 @@ def get_neighbors(airspace: AirSpace, point_name: str) -> list:
     point = get_node_by_name(airspace, point_name)
     if not point:
         return []
-
     neighbors = []
     for segment in airspace.nav_segments:
         if segment.origin_number == point.number:

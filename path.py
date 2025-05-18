@@ -248,55 +248,65 @@ def find_closest_path_entries():
     e_path_to = tk.Entry(root)
     e_path_to.grid(row=3, column=3)
 
-    def finding_shortest_path(graph, start_node, end_node):
-        """Esta función encuentra el camino más corto entre dos nodos y lo retorna"""
-        distances = {node: float('inf') for node in graph.nodes}
-        previous_nodes = {node: None for node in graph.nodes}
-        distances[start_node] = 0
-        priority_queue = []
-        heapq.heappush(priority_queue, (0, start_node.name, start_node))
+    def finding_shortest_path(airspace: AirSpace, start_name: str, end_name: str):
+        """Find shortest path between two named points using only the provided classes"""
+        start_point = get_node_by_name(airspace, start_name)
+        end_point = get_node_by_name(airspace, end_name)
 
-        while priority_queue:
-            current_distance, _, current_node = heapq.heappop(priority_queue)
-            if current_node == end_node:
+        if not start_point or not end_point:
+            return None
+
+        # Create a mapping from point number to point object
+        point_map = {point.number: point for point in airspace.nav_points}
+
+        # Initialize data structures
+        distances = {point.number: float('inf') for point in airspace.nav_points}
+        previous = {point.number: None for point in airspace.nav_points}
+        distances[start_point.number] = 0
+        heap = [(0, start_point.number)]
+
+        while heap:
+            current_dist, current_num = heapq.heappop(heap)
+            if current_num == end_point.number:
                 break
-            if current_distance > distances[current_node]:
+
+            if current_dist > distances[current_num]:
                 continue
 
-            for neighbor in current_node.neighbors:
-                # Find the connecting segment
-                segment = None
-                for s in graph.segments:
-                    if s.origin == current_node and s.destination == neighbor:
-                        segment = s
-                        break
+            # Get all outgoing segments from current point
+            for segment in airspace.nav_segments:
+                if segment.origin_number == current_num:
+                    neighbor_num = segment.destination_number
+                    distance = current_dist + segment.distance
 
-                if not segment:
-                    continue
-
-                distance = current_distance + segment.cost
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    previous_nodes[neighbor] = current_node
-                    heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+                    if distance < distances[neighbor_num]:
+                        distances[neighbor_num] = distance
+                        previous[neighbor_num] = current_num
+                        heapq.heappush(heap, (distance, neighbor_num))
 
         # Reconstruct path
         path = []
-        current = end_node
-        while current is not None:
-            path.insert(0, current)
-            current = previous_nodes.get(current, None)
+        current_num = end_point.number
+        while current_num is not None:
+            path.insert(0, point_map[current_num])
+            current_num = previous.get(current_num)
 
-        if distances[end_node] != float('inf'):
-            path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
+        if distances[end_point.number] != float('inf'):
+            # Create a simple path representation
+            path_names = [point.name for point in path]
+            path_segments = []
             for i in range(len(path) - 1):
-                from_node = path[i]
-                to_node = path[i + 1]
-                for seg in graph.segments:
-                    if seg.origin == from_node and seg.destination == to_node:
-                        path_obj.AddNodeToPath(to_node, seg)
-                        break
-            return path_obj
+                seg = get_segment_between(airspace, path[i].name, path[i + 1].name)
+                if seg:
+                    path_segments.append(seg)
+
+            return {
+                'start': start_point.name,
+                'end': end_point.name,
+                'distance': distances[end_point.number],
+                'path': path_names,
+                'segments': path_segments
+            }
         return None
 
     def highlight_path(path_obj):
