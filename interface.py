@@ -42,38 +42,31 @@ def CreateGraph_1 ():
     AddSegment(G, "LF","L","F")
     return G
 
+
 def show_new_graph():
-    '''Establecemos que debe mostrar la GUI en el gráfico'''
+    '''Shows graph with clean cost labels'''
     global fig, ax, canvas
     ax.clear()
-    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color= '#AA336A')
+    ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
-    for seg in G.segments: #Calculamos la distancia entre dos nodos
-        dx = seg.destination.x - seg.origin.x
-        dy = seg.destination.y - seg.origin.y
-        length = math.sqrt(dx ** 2 + dy ** 2)
-        if length > 0: #Especificamos que configuarciones queremos mostrar en el gráfico
-            dx /= length
-            dy /= length
-            ax.arrow(
-                seg.origin.x, seg.origin.y,
-                dx * length * 0.95,
-                dy * length * 0.95,
-                head_width=0.5,
-                head_length=0.5,
-                fc='blue',
-                ec='blue',
-                length_includes_head=True,
-                width=0.01,
-                zorder=1)
-        ax.text((seg.origin.x + seg.destination.x) / 2 + 0.3,
-                (seg.origin.y + seg.destination.y) / 2 + 0.3,
+
+    # Draw segments and costs
+    for seg in G.segments:
+        ax.plot([seg.origin.x, seg.destination.x],
+                [seg.origin.y, seg.destination.y],
+                'blue', linewidth=1.5, zorder=1)
+
+        # Cost label styling
+        ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
+                (seg.origin.y + seg.destination.y) / 2 + 0.2,
                 f"{seg.cost:.2f}",
-                zorder=4, fontsize=8,
-                bbox=dict(facecolor='white', alpha=0.7, edgecolor='none'))
+                color='black', fontsize=8, zorder=3)
+
+    # Draw nodes
     for node in G.nodes:
         ax.plot(node.x, node.y, 'ro', markersize=8)
         ax.text(node.x, node.y, node.name, fontsize=10)
+
     if canvas is None:
         canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
@@ -530,7 +523,7 @@ def Entries():
         '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         global G, edited_G, current_display_mode
         try:
-            new_graph = read_file(e_file.get())
+            new_graph = read_map_file(e_file.get())
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G

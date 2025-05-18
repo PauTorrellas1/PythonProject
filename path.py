@@ -50,11 +50,13 @@ class Path:
         return self.cumulative_costs.get(node, -1)
 
 def PlotPath(graph: Graph, path: Path):
-    '''Plots the Path in the Graph'''
+    '''Plots path with clean cost labels'''
     global fig, ax, canvas
     ax.clear()
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
+
+    # Draw all nodes
     for node in graph.nodes:
         color = 'gray'
         if node == path.origin:
@@ -65,19 +67,31 @@ def PlotPath(graph: Graph, path: Path):
             color = 'green'
         ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
         ax.text(node.x, node.y, node.name, fontsize=10, zorder=4)
+
+    # Draw all segments with costs
     for seg in graph.segments:
-        is_path_segment = False
-        for path_seg in path.segments:
-            if (seg.origin == path_seg.origin and seg.destination == path_seg.destination):
-                is_path_segment = True
-                break
+        is_path_segment = any(
+            (seg.origin == path_seg.origin and seg.destination == path_seg.destination)
+            for path_seg in path.segments
+        )
+
         if is_path_segment:
-            draw_segment(seg, color='red', width=2, zorder=2)
+            ax.plot([seg.origin.x, seg.destination.x],
+                    [seg.origin.y, seg.destination.y],
+                    'r-', linewidth=2, zorder=2)
         else:
-            draw_segment(seg, color='#CCCCCC', width=1, zorder=1)
+            ax.plot([seg.origin.x, seg.destination.x],
+                    [seg.origin.y, seg.destination.y],
+                    '#CCCCCC', linewidth=1, zorder=1)
+
+        # Cost label for all segments
+        ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
+                (seg.origin.y + seg.destination.y) / 2 + 0.2,
+                f"{seg.cost:.2f}",
+                color='black', fontsize=8, zorder=3)
+
     canvas.draw()
-    show_message(
-        f"Displaying path '{path.name}' from {path.origin.name} to {path.destination.name} (Cost: {path.cost:.2f})")
+    show_message(f"Displaying path from {path.origin.name} to {path.destination.name}")
 
 def set_graph(graph_instance):
     '''Esta función especifica qué codigo será el que mostraremos'''
