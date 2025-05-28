@@ -7,7 +7,6 @@ class Graph:
         self.nodes = []
         self.segments = []
 
-
 def AddNode(g,n):
     '''
     Esta función busca un nodo en el grafo y lo añade si no lo encuentra y
@@ -48,7 +47,6 @@ def AddSegment(g, Vector:str, nOrigin, nDestination):
         AddNeighbor(Origin, Destination)
         return True
     else:
-        print("node not valid")
         return False
 
 def SearchSegment(g, Vector):
@@ -85,19 +83,19 @@ def NodeConfig (g):
         p.plot([n.x], [n.y], "r", marker="D", zorder=2)
         p.text(n.x+0.5, n.y-0.5, n.name, fontweight='bold')
 
-
 def SegmentConfig(g, color: str):
-    '''Configuramos los segmentos mostrados en el gráfico'''
+    '''Configures the segments with clean cost labels'''
     for s in g.segments:
+        # Draw simple line
         p.plot([s.origin.x, s.destination.x],
-                 [s.origin.y, s.destination.y],
-                 color, zorder=1)
+               [s.origin.y, s.destination.y],
+               color=color, zorder=1, linewidth=1.5)
 
-        # Mostrar coste con 2 decimales
-        cost_text = f"{s.cost:.2f}"  # Formato: 2 decimales
-        p.text((s.origin.x + s.destination.x) / 2 + 0.5,
-                 (s.origin.y + s.destination.y) / 2 + 0.5,
-                 cost_text, zorder=3)
+        # Add cost label (small, black, no box)
+        cost_text = f"{s.cost:.2f}"
+        p.text((s.origin.x + s.destination.x) / 2 + 0.2,
+               (s.origin.y + s.destination.y) / 2 + 0.2,
+               cost_text, zorder=3, color='black', fontsize=8)
 
 def Plot(g):
     '''Fabricamos el gráfico que mostrará todos nuestros datos'''
@@ -109,7 +107,6 @@ def Plot(g):
     p.xlabel("x")
     p.ylabel("y")
     p.show()
-
 
 def PlotNode(g, Norigin):
     '''Muestra un nodo de origen (azul), sus vecinos (verde) y segmentos (rojo).
@@ -139,30 +136,90 @@ def PlotNode(g, Norigin):
     p.show()
     return True
 
-def read_file(Nfile:str):
+def read_file(Nfile: str):
     """
-    CSV file
+    CSV file reader for graph data
     Format:
         Type of add (S=segment N=node), Name, Attribute1, Attribute 2
     """
     G = Graph()
-    F=open(Nfile,"r")
-    line=F.readline()
-    while line!="":
-        parts=line.strip().split(",")
-        if parts[0]=="N":
-            _, name, x, y = parts
-            AddNode(G, Node(name, eval(x), eval(y)))
-        if parts[0] == "S":
-            _, name, n1, n2 = parts
-            AddSegment(G, name, n1, n2)
-        line = F.readline()
+    with open(Nfile, "r") as F:
+        for line in F:
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split(",")
+            if len(parts) < 4:
+                continue
+            if parts[0] == "N":
+                _, name, x, y = parts[:4]
+                AddNode(G, Node(name, float(x), float(y)))
+            elif parts[0] == "S":
+                _, name, n1, n2 = parts[:4]
+                AddSegment(G, name, n1, n2)
     return G
+
+def read_map_file(region: str):
+    standard_regions = {'Catalunya': 'Cat', 'España': 'Spain', 'Europa': 'ECAC'}
+    if region in standard_regions:
+        prefix = standard_regions[region]
+        try:
+            id_to_name = {}
+            name_to_node = {}
+            with open(f'{prefix}_nav.txt', 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 4:
+                        node_id, name, lat, lon = parts[:4]
+                        id_to_name[node_id] = name
+            airport_nodes = set()
+            with open(f'{prefix}_aer.txt', 'r') as f:
+                for line in f:
+                    name = line.strip()
+                    if name:
+                        airport_nodes.add(name)
+            G = Graph()
+            with open(f'{prefix}_nav.txt', 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 4:
+                        node_id, name, lat, lon = parts[:4]
+                        node = Node(name, float(lon), float(lat))
+                        AddNode(G, node)
+                        name_to_node[name] = node
+            successful = 0
+            with open(f'{prefix}_seg.txt', 'r') as f:
+                for line in f:
+                    parts = line.strip().split()
+                    if len(parts) >= 3:
+                        origin_id, dest_id, distance = parts[:3]
+                        origin_name = id_to_name.get(origin_id)
+                        dest_name = id_to_name.get(dest_id)
+                        if origin_name and dest_name:
+                            origin_node = name_to_node.get(origin_name)
+                            dest_node = name_to_node.get(dest_name)
+                            if origin_node and dest_node:
+                                seg_name = f"{origin_name}_{dest_name}"
+                                segment = Segment(seg_name, origin_node, dest_node)
+                                segment.cost = float(distance)
+                                G.segments.append(segment)
+                                AddNeighbor(origin_node, dest_node)
+                                successful += 1
+                            else:
+                                print(f"Node objects not found: {origin_name} -> {dest_name}")
+                        else:
+                            print(f"Names not found for IDs: {origin_id} -> {dest_id}")
+            print(f"Successfully connected {successful} segments")
+            return G
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return read_file(region)
+    else:
+        return read_file(region)
 
 def CreateNode(g,name,x,y):
     '''Esta función crea un node y lo añade a Node'''
     return AddNode(g,Node(name, x, y))
-
 
 def DeleteNode(g, node_name):
     '''Esta función elimina un nodo de nodos'''
@@ -177,12 +234,18 @@ def DeleteNode(g, node_name):
     else:
         return False
 
-def DeleteSegment(g, Vector):
-    '''Esta función elimina un segmento de segmentos'''
-    segments_to_remove = [s for s in g.segments if s.name in (Vector, Vector[::-1])]
-    SearchSegment(g, Vector)
-    if not segments_to_remove:
-        print('No encontrado')
-        return False
-    for segment in segments_to_remove:
-        g.segments.remove(segment)
+def DeleteSegment(graph, segment_name):
+    segment_to_delete = None
+    for seg in graph.segments:
+        if seg.name == segment_name:
+            segment_to_delete = seg
+            break
+    if segment_to_delete:
+        if segment_to_delete.destination in segment_to_delete.origin.neighbors:
+            segment_to_delete.origin.neighbors.remove(segment_to_delete.destination)
+        if segment_to_delete.origin in segment_to_delete.destination.neighbors:
+            segment_to_delete.destination.neighbors.remove(segment_to_delete.origin)
+        graph.segments.remove(segment_to_delete)
+        return True
+    return False
+
