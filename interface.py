@@ -357,19 +357,23 @@ def Entries():
     label("File Name",0, 2)
     e_file = tk.Entry(root)  # Primer entry
     e_file.grid(row=0, column=3,pady=10)
+
     def entry1(event=None):
-        '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         global G, edited_G, current_display_mode
+        filename = e_file.get()
         try:
-            new_graph = read_map_file(e_file.get())
+            new_graph = read_map_file(filename)
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G
-                set_graph(G)  # Make sure to update the graph reference in path.py
+                set_graph(G)
                 current_display_mode = "edited"
                 show_graph_1()
-                show_message(f"Successfully loaded graph from {e_file.get()}")
-                e_file.delete(0, 'end')
+                show_message(f"Successfully loaded graph from {filename}")
+                try:
+                    e_file.delete(0, 'end')
+                except tk.TclError:
+                    pass
             else:
                 show_message("No valid nodes found in file", is_error=True)
                 e_file.delete(0, 'end')
