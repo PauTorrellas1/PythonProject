@@ -5,3 +5,4 @@ class NavPoint:
         self.latitude = latitude
         self.longitude = longitude
 
+
