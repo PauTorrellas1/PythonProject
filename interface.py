@@ -93,6 +93,32 @@ path_info_text = tk.Text(
     relief=tk.FLAT)
 path_info_text.pack(fill=tk.BOTH, expand=True)
 
+def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
+    tk.Button(master=master,
+        text=tex,
+        command=command,
+        activebackground=abg,
+        activeforeground="white",
+        anchor="center",
+        bd=3,
+        bg="lightgray",
+        cursor="hand2",
+        disabledforeground="gray",
+        fg="black",
+        font=("Roboto", 12),
+        highlightbackground="black",
+        highlightcolor="green",
+        highlightthickness=2,
+        justify="center",
+        overrelief="raised",
+        padx=5,
+        pady=pady,
+        width=width,
+        wraplength=1000).grid(row=row, column=column)
+def label(text, row, column,master=root):
+    tk.Label(master=master, text=text, padx=10,font=7).grid(row=row, column=column)
+
+
 def show_graph():
     '''Función que nos muestra el grafo original'''
     global current_display_mode, G
@@ -311,217 +337,26 @@ def confirm_new_graph():
     confirm_window.grab_set()
     confirm_window.wait_window()
 
-def Buttons():
-    def button_show_original_graph():
-        '''Botón para mostrar el gráfico original'''
-        button_show_original_graph = tk.Button(root,
-                                               text="Show original graph",
-                                               command=show_graph,
-                                               activebackground="blue",
-                                               activeforeground="white",
-                                               anchor="center",
-                                               bd=3,
-                                               bg="lightgray",
-                                               cursor="hand2",
-                                               disabledforeground="gray",
-                                               fg="black",
-                                               font=("Arial", 12),
-                                               height=2,
-                                               highlightbackground="black",
-                                               highlightcolor="green",
-                                               highlightthickness=2,
-                                               justify="center",
-                                               overrelief="raised",
-                                               padx=10,
-                                               pady=5,
-                                               width=15,
-                                               wraplength=100)
-
-        button_show_original_graph.grid(row=0, column=1)
-
-    def button_show_edited_graph():
-        '''Botón para mostrar el gráfico editado por nosotros'''
-        button_show_edited_graph = tk.Button(root,
-                                             text="Show edited graph",
-                                             command=show_graph_1,
-                                             activebackground="blue",
-                                             activeforeground="white",
-                                             anchor="center",
-                                             bd=3,
-                                             bg="lightgray",
-                                             cursor="hand2",
-                                             disabledforeground="gray",
-                                             fg="black",
-                                             font=("Arial", 12),
-                                             height=2,
-                                             highlightbackground="black",
-                                             highlightcolor="green",
-                                             highlightthickness=2,
-                                             justify="center",
-                                             overrelief="raised",
-                                             padx=10,
-                                             pady=5,
-                                             width=15,
-                                             wraplength=100)
-
-        button_show_edited_graph.grid(row=1, column=1)
-
-    def button_create_new_graph():
-        '''Aquí creamos un nuevo gráfico a nuestro gusto. Esta opción abre una ventana nueva de tk
-        donde podemos personalizar nuestro gráfico como queramos. Es esencialmente lo mismo que
-        la ventana anterior pero con la diferencia que este gráfico está creado desde cero por nosotros mismos'''
-        button_create_new_graph = tk.Button(root,
-                                            text="Create new graph",
-                                            command=confirm_new_graph,
-                                            activebackground="blue",
-                                            activeforeground="white",
-                                            anchor="center",
-                                            bd=3,
-                                            bg="lightgray",
-                                            cursor="hand2",
-                                            disabledforeground="gray",
-                                            fg="black",
-                                            font=("Arial", 12),
-                                            height=2,
-                                            highlightbackground="black",
-                                            highlightcolor="green",
-                                            highlightthickness=2,
-                                            justify="center",
-                                            overrelief="raised",
-                                            padx=10,
-                                            pady=5,
-                                            width=15,
-                                            wraplength=100)
-        button_create_new_graph.grid(row=2, column=1)
-
-    def button_save_graph_info():
-        '''Botón para ver la información del grafo y posteriormente,
-        si lo desea, guardarla'''
-        button_save_graph_info = tk.Button(root,
-                                           text="Save the information of the graph",
-                                           command=print_graph_info,
-                                           activebackground="blue",
-                                           activeforeground="white",
-                                           anchor="center",
-                                           bd=3,
-                                           bg="lightgray",
-                                           cursor="hand2",
-                                           disabledforeground="gray",
-                                           fg="black",
-                                           font=("Arial", 12),
-                                           height=2,
-                                           highlightbackground="black",
-                                           highlightcolor="green",
-                                           highlightthickness=2,
-                                           justify="center",
-                                           overrelief="raised",
-                                           padx=10,
-                                           pady=5,
-                                           width=15,
-                                           wraplength=100)
-
-        button_save_graph_info.grid(row=3, column=1)
-
-    def button_show_paths():
-        '''Botón que lleva a la opcion de analizar los caminos, ya sean
-        los caminos posibles desde un nodo deseado,
-        o el camino más corto entre un nodo y otro'''
-        button_show_paths = tk.Button(root,
-                                      text="Analyze paths",
-                                      command=lambda: [func() for func in (show_paths, find_closest_path_entries)],
-                                      activebackground="blue",
-                                      activeforeground="white",
-                                      anchor="center",
-                                      bd=3,
-                                      bg="lightgray",
-                                      cursor="hand2",
-                                      disabledforeground="lightgray",
-                                      fg="black",
-                                      font=("Arial", 12),
-                                      height=3,
-                                      highlightbackground="black",
-                                      highlightcolor="green",
-                                      highlightthickness=2,
-                                      justify="center",
-                                      overrelief="raised",
-                                      padx=10,
-                                      pady=5,
-                                      width=15,
-                                      wraplength=100)
-
-        button_show_paths.grid(row=5, column=1)
-
-    def button_show_neighbors():
-        '''Botón para ver los vecinos de un nodo'''
-        button_show_neighbors = tk.Button(root,
-                                          text="Show the neighbors of a node",
-                                          command=show_neighbors,
-                                          activebackground="blue",
-                                          activeforeground="white",
-                                          anchor="center",
-                                          bd=3,
-                                          bg="lightgray",
-                                          cursor="hand2",
-                                          disabledforeground="gray",
-                                          fg="black",
-                                          font=("Arial", 12),
-                                          height=3,
-                                          highlightbackground="black",
-                                          highlightcolor="green",
-                                          highlightthickness=2,
-                                          justify="center",
-                                          overrelief="raised",
-                                          padx=10,
-                                          pady=5,
-                                          width=15,
-                                          wraplength=100)
-
-        button_show_neighbors.grid(row=4, column=1)
-
-    button_show_original_graph()
-    button_show_edited_graph()
-    button_create_new_graph()
-    button_save_graph_info()
-    button_show_paths()
-    button_show_neighbors()
+button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: show_graph_1, "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: create_new_graph(), "Crete new graph", 2, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)#, master=plotting_frame)
+button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
 
 def Entries():
     '''Cada una de las entradas de texto que usaremos en el menú principal
     de nuestra aplicación. si llevan tk.Label son únicamente texto,
     mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
     Si llevan tk.Button son botones para presionar y llevar a cabo una acción o comando.'''
-    global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file
+    """global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file"""# en ppi no cal
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-    tk.Label(root, text="File Name").grid(row=0, column=2)
-    tk.Label(root, text="New node name").grid(row=1, column=2)
-    tk.Label(root, text="X").grid(row=2, column=2)
-    tk.Label(root, text="Y").grid(row=3, column=2)
-    tk.Label(root, text="From").grid(row=5, column=2)
-    tk.Label(root, text="To").grid(row=6, column=2)
-    tk.Label(root, text="Delete Node").grid(row=8, column=2)
-    tk.Label(root, text='Delete segment').grid(row=10, column=2)
 
-
-    e_file = tk.Entry(root) #Primer entry
-    e_name = tk.Entry(root) #Nombre del nuevo nodo
-    e_x = tk.Entry(root) #Valor X del nuevo nodo
-    e_y = tk.Entry(root) #Valor Y del nuevo nodo
-    e_from = tk.Entry(root) #Nodo origen del nuevo segmento
-    e_to = tk.Entry(root) #Nodo destino del nuevo segmento
-    e_delete_n = tk.Entry(root) #Nombre del nodo a borrar
-    e_delete_s = tk.Entry(root) #Nombre del segmento a borrar
-
-    e_file.grid(row=0, column=3)
-    e_name.grid(row=1, column=3)
-    e_x.grid(row=2, column=3)
-    e_y.grid(row=3, column=3)
-    e_from.grid(row=5, column=3)
-    e_to.grid(row=6, column=3)
-    e_delete_n.grid(row=8, column=3)
-    e_delete_s.grid(row=10, column=3)
-
+    label("File Name",0, 2)
+    e_file = tk.Entry(root)  # Primer entry
+    e_file.grid(row=0, column=3,pady=10)
     def entry1(event=None):
         '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         global G, edited_G, current_display_mode
@@ -543,7 +378,17 @@ def Entries():
             e_file.delete(0, 'end')
         except Exception as e:
             show_message(f"Error loading file: {str(e)}", is_error=True)
+    button(entry1, "Entry", 1, 3,width=12)
 
+    label("New node name", 2, 2)
+    e_name = tk.Entry(root)  # Nombre del nuevo nodo
+    e_name.grid(row=2, column=3,pady=10)
+    label("X",3,2)
+    e_x = tk.Entry(root)  # Valor X del nuevo nodo
+    e_x.grid(row=3, column=3,pady=10)
+    label("Y",4, 2)
+    e_y = tk.Entry(root)  # Valor Y del nuevo nodo
+    e_y.grid(row=4, column=3,pady=10)
     def add_node(event=None):
         '''Añadimos un nodo al gráfico, marcando el nombre del nodo
         y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
@@ -572,7 +417,14 @@ def Entries():
         e_name.delete(0, 'end')
         e_x.delete(0, 'end')
         e_y.delete(0, 'end')
+    button(add_node, "Add Node", 5, 3,width=12)
 
+    label("From",6,2)
+    e_from = tk.Entry(root)  # Nodo origen del nuevo segmento
+    e_from.grid(row=6, column=3,pady=10)
+    label("To",7,2)
+    e_to = tk.Entry(root) #Nodo destino del nuevo segmento
+    e_to.grid(row=7, column=3,pady=10)
     def add_segment(event=None):
         '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
         o creados con la función de AddNode'''
@@ -611,7 +463,11 @@ def Entries():
         e_to.delete(0, 'end')
         e_from.delete(0, 'end')
         show_graph_1()
+    button(add_segment, "Add Segment", 8, 3,width=12)
 
+    label("Delete Node",9,2)
+    e_delete_n = tk.Entry(root) #Nombre del nodo a borrar
+    e_delete_n.grid(row=9, column=3,pady=15)
     def delete_node(event=None):
         '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
         global edited_G
@@ -628,7 +484,11 @@ def Entries():
         show_message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
         show_graph_1()
+    button(delete_node, "Delete Node", 10, 3,width=12)
 
+    label('Delete segment',11,2)
+    e_delete_s = tk.Entry(root) #Nombre del segmento a borrar
+    e_delete_s.grid(row=11, column=3,pady=15)
     def delete_segment(event=None):
         '''La misma función que delete_node, solo que en lugar de eliminar
         nodos esta función elimina segmentos'''
@@ -651,6 +511,7 @@ def Entries():
         show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         show_graph_1()
+    button(delete_segment, 'Delete Segment', 14, 3,width=12)
 
     file_entries = [e_file]
     work_with_entry(file_entries, entry1)
@@ -662,16 +523,13 @@ def Entries():
     work_with_entry(delete_node_entries, delete_node)
     delete_segment_entries = [e_delete_s]
     work_with_entry(delete_segment_entries, delete_segment)
-    tk.Button(root, text="Entry", command=entry1, cursor="hand2").grid(row=0, column=4)
-    tk.Button(root, text="Add Node", command=add_node, cursor="hand2").grid(row=4, column=3)
-    tk.Button(root, text="Add Segment", command=add_segment, cursor="hand2").grid(row=7, column=3)
-    tk.Button(root, text="Delete Node", command=delete_node, cursor="hand2").grid(row=9, column=3)
-    tk.Button(root, text='Delete Segment', command=delete_segment, cursor='hand2').grid(row=13, column=3)
-    #Botones para llevar acabo acciones determinadas anteriormente, el cursor
-    #se transforma en una mano (hand2) al pasar por encima
+
     root.state('zoomed')
-
-Buttons()
+    label("", 0, 4),label("", 0, 6)#serves as a separator for the graph
 Entries()
-
+def close():
+    p.close('all')
+    root.destroy()
+button(lambda: close(),"Exit", 0, 7,"red",width=5,pady=10)
+root.protocol("WM_DELETE_WINDOW", close)
 root.mainloop()
