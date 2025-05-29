@@ -6,6 +6,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from types import SimpleNamespace
 
+'''Primero de todo establecemos algunos valores que usaremos más adelante, para poderlos tener ya 
+definidos y evitar errores en el código'''
+
 root = tk.Tk()
 root.title("Airspace Visualization")
 message_label = None
@@ -17,6 +20,8 @@ canvas = FigureCanvasTkAgg(fig, master=root)
 canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 class Graph:
+    '''Definimos la clase Graph que contendrá los nodos y los
+     segmentos que mostraremos más tarde'''
     def __init__(self):
         self.nodes = []
         self.segments = []
@@ -41,11 +46,10 @@ def SearchNode(g, name):
     Esta función busca un nodo en el grafo y retorna el node si lo encuentra y
     None si no lo encuentra
     '''
-    if is_real_map(g):
-        # For real maps, search in nav_points
+    if is_real_map(g): #Para MUCHAS funciones usaremos esta condición, para poder así diferenciar cuando estemos usando
+        #un grafo con nodos y segmentos normales de cuando utilicemos un grafo real, con aeropuertos y rutas
         point = next((p for p in g.nav_points if p['name'] == name), None)
         if point:
-            # Create a hashable SimpleNamespace by implementing __hash__
             ns = SimpleNamespace(name=point['name'], x=point['lon'], y=point['lat'])
             ns.__hash__ = lambda self: hash(self.name)
             return ns
@@ -98,7 +102,6 @@ def GetClosest (g, x:float,y:float):
                 closest = point
         return closest
     else:
-        # Original implementation
         i = 0
         Dmin = Distance(Node("nxy", x, y), g.nodes[i])
         Closestn = g.nodes[i]
@@ -110,21 +113,19 @@ def GetClosest (g, x:float,y:float):
         return Closestn
 
 def NodeConfig (g):
-    '''Especificamos la configuración de los nodos mostrados en el gráfico'''
+    '''Especificamos la configuración de los nodos mostrados en el
+    gráfico y cómo queremos que se muestren'''
     # Crea la configuración base de los nodos
     for n in g.nodes:
         p.plot([n.x], [n.y], "r", marker="D", zorder=2)
         p.text(n.x+0.5, n.y-0.5, n.name, fontweight='bold')
 
 def SegmentConfig(g, color: str):
-    '''Configures the segments with clean cost labels'''
+    '''Configuramos los segmentos, calculamos costes y establecemos las lineas'''
     for s in g.segments:
-        # Draw simple line
         p.plot([s.origin.x, s.destination.x],
                [s.origin.y, s.destination.y],
-               color=color, zorder=1, linewidth=1.5)
-
-        # Add cost label (small, black, no box)
+               color=color, zorder=1, linewidth=1)
         cost_text = f"{s.cost:.2f}"
         p.text((s.origin.x + s.destination.x) / 2 + 0.2,
                (s.origin.y + s.destination.y) / 2 + 0.2,
@@ -232,12 +233,10 @@ def show_message(message, is_error=False, persistent=False):
         if is_error:
             clear_message(delay=5)
 
-
-# In Graph.py, modify the Plot function:
 def Plot(g):
+    '''Esta función es la encargada de 'preparar' el gráfico que mostraremos
+    más tarde en la GUI'''
     global fig, ax, canvas
-
-    # Initialize figure if it doesn't exist
     if 'fig' not in globals():
         fig = Figure(figsize=(8.5, 7), dpi=100)
         ax = fig.add_subplot(111)
@@ -245,23 +244,15 @@ def Plot(g):
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
     else:
         ax.clear()
-
     if is_real_map(g):
-        # Plot real map (AirSpace)
         ax.set_title(f"Airspace Map")
-
-        # Plot navigation points with thumbtack icons
         for point in g.nav_points:
             ax.plot(point['lon'], point['lat'], marker=(3, 0, -45), markersize=8, color='red')
             ax.text(point['lon'] + 0.05, point['lat'] + 0.05, point['name'], fontsize=8)
-
-        # Highlight airports with different markers
         for airport in g.nav_airports:
             point = next((p for p in g.nav_points if p['name'] == airport), None)
             if point:
                 ax.plot(point['lon'], point['lat'], 'gD', markersize=6)
-
-        # Plot segments
         for seg in g.nav_segments:
             origin = next((p for p in g.nav_points if p['id'] == seg['origin_id']), None)
             dest = next((p for p in g.nav_points if p['id'] == seg['dest_id']), None)
@@ -269,39 +260,30 @@ def Plot(g):
                 ax.plot([origin['lon'], dest['lon']],
                         [origin['lat'], dest['lat']],
                         'b-', linewidth=1)
-                # Add distance label
                 ax.text((origin['lon'] + dest['lon']) / 2,
                         (origin['lat'] + dest['lat']) / 2,
                         f"{seg['distance']:.1f}", fontsize=8)
     else:
-        # Plot regular graph with thumbtack icons
         for n in g.nodes:
             ax.plot(n.x, n.y, marker=(3, 0, -45), markersize=8, color='red')
             ax.text(n.x + 0.5, n.y - 0.5, n.name, fontweight='bold')
-
         SegmentConfig(g, "#979797")
-
-    # Common plot settings
     ax.grid(color="#717171", linestyle="--")
     ax.set_xlabel("Longitude")
     ax.set_ylabel("Latitude")
-
-    # Update canvas
     canvas.draw()
 
 def PlotRealMap(g):
-    # Plot navPoints
+    '''Esta función hace lo mismo que la anterior, es la
+    encargada de 'preparar' el mapa que usaremos despues,
+    pero en este caso es solo para mapas reales importados'''
     for point in g.nav_points:
         p.plot(point['lon'], point['lat'], "ro", markersize=4)
         p.text(point['lon'] + 0.05, point['lat'] - 0.05, point['name'], fontsize=8)
-
-    # Plot navAirports with different markers
     for airport in g.nav_airports:
         point = next((p for p in g.nav_points if p['name'] == airport), None)
         if point:
             p.plot(point['lon'], point['lat'], "gD", markersize=6)
-
-    # Plot navSegments
     for seg in g.nav_segments:
         origin = next((p for p in g.nav_points if p['id'] == seg['origin_id']), None)
         dest = next((p for p in g.nav_points if p['id'] == seg['dest_id']), None)
@@ -309,11 +291,9 @@ def PlotRealMap(g):
             p.plot([origin['lon'], dest['lon']],
                    [origin['lat'], dest['lat']],
                    "b-", linewidth=1)
-            # Add distance label
             p.text((origin['lon'] + dest['lon']) / 2,
                    (origin['lat'] + dest['lat']) / 2,
                    f"{seg['distance']:.1f}", fontsize=8)
-
     p.grid(color="#717171", linestyle="--")
     p.xlabel("Longitude")
     p.ylabel("Latitude")
@@ -350,9 +330,9 @@ def PlotNode(g, Norigin):
 
 def read_file(Nfile: str):
     """
-    CSV file reader for graph data
-    Format:
-        Type of add (S=segment N=node), Name, Attribute1, Attribute 2
+    Lee un archivo CSV del montón de archivos
+    Formato:
+        Añade... (S=segment N=node), Nombre, Attribute1, Attribute 2
     """
     G = Graph()
     with open(Nfile, "r") as F:
@@ -376,9 +356,8 @@ def CreateNode(g,name,x,y):
     return AddNode(g,Node(name, x, y))
 
 def DeleteNode(g, node_name):
-    '''Esta función elimina un nodo de nodos'''
+    '''Esta función elimina un nodo de g.nodos'''
     if is_real_map(g):
-        # For real maps, we can't actually delete nodes
         show_message("Cannot delete nodes in real maps", is_error=True)
         return False
     else:
@@ -393,16 +372,13 @@ def DeleteNode(g, node_name):
         else:
             return False
 
-
 def DeleteSegment(graph, segment_name):
+    '''Esta función elimima un segmento de los segmentos guardados'''
     if is_real_map(graph):
-        # AirSpace version - segment_name should be in format "origin_destination"
         try:
             origin_name, dest_name = segment_name.split('_')
             origin_id = next(p['id'] for p in graph.nav_points if p['name'] == origin_name)
             dest_id = next(p['id'] for p in graph.nav_points if p['name'] == dest_name)
-
-            # Remove both directions if they exist
             graph.nav_segments = [s for s in graph.nav_segments
                                   if not ((s['origin_id'] == origin_id and s['dest_id'] == dest_id) or
                                           (s['origin_id'] == dest_id and s['dest_id'] == origin_id))]

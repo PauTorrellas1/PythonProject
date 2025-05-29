@@ -16,7 +16,7 @@ class Path:
         self.cumulative_costs = {origin: 0}  # Cumulative costs from origin to each node
 
     def AddNodeToPath(self, node: Node, segment: Segment):
-        '''Adds a node to the path with its connecting segment'''
+        '''Añade un nodo a la clase Path con su respectivo segmento'''
         if node not in self.nodes:
             self.nodes.append(node)
             self.segments.append(segment)
@@ -26,16 +26,17 @@ class Path:
             self.cost = self.cumulative_costs[node]
 
     def ContainsNode(self, node: Node) -> bool:
-        '''Returns True if the Node is in the Path and False otherwise.'''
+        '''Devuelve True en caso de que el Nodo esté en el camino.
+        De no estarlo devolverá falso'''
         return node in self.nodes
 
     def CostToNode(self, node: Node) -> float:
-        '''Returns the total cost from the origin of the Path to the Node.
-        Returns -1 if the Node is not in the Path.'''
+        '''Devuelve el coste total del Nodo hasta el punto determinado.
+        Devuelve -1 en caso de que el Nodo no esté en el Path'''
         return self.cumulative_costs.get(node, -1)
 
 def PlotPath(graph: Graph, path: Path):
-    '''Plots path with clean cost labels'''
+    '''Hace un gráfico de los caminos con la configuración y ajustes necesarios'''
     global fig, ax, canvas
     if 'ax' not in globals():
         fig = Figure(figsize=(8.5, 7), dpi=100)
@@ -44,8 +45,6 @@ def PlotPath(graph: Graph, path: Path):
         ax.clear()
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
-
-    # Draw all nodes from the provided graph
     for node in graph.nodes:
         color = 'gray'
         if node == path.origin:
@@ -56,14 +55,10 @@ def PlotPath(graph: Graph, path: Path):
             color = 'green'
         ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
         ax.text(node.x, node.y, node.name, fontsize=10, zorder=4)
-
-    # Draw all segments from the provided graph
     for seg in graph.segments:
         is_path_segment = any(
             (seg.origin == path_seg.origin and seg.destination == path_seg.destination)
-            for path_seg in path.segments
-        )
-
+            for path_seg in path.segments)
         if is_path_segment:
             ax.plot([seg.origin.x, seg.destination.x],
                     [seg.origin.y, seg.destination.y],
@@ -72,8 +67,6 @@ def PlotPath(graph: Graph, path: Path):
             ax.plot([seg.origin.x, seg.destination.x],
                     [seg.origin.y, seg.destination.y],
                     '#CCCCCC', linewidth=1, zorder=1)
-
-        # Cost label for all segments
         ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
                 (seg.origin.y + seg.destination.y) / 2 + 0.2,
                 f"{seg.cost:.2f}",
@@ -86,7 +79,7 @@ def PlotPath(graph: Graph, path: Path):
     show_message(f"Displaying path from {path.origin.name} to {path.destination.name}")
 
 def set_graph(graph_instance):
-    '''Esta función especifica qué codigo será el que mostraremos'''
+    '''Esta función especifica qué código será el que mostraremos'''
     global G
     G = graph_instance
 
@@ -139,28 +132,23 @@ def find_closest_path_entries():
     e_path_to.grid(row=3, column=3)
 
     def finding_shortest_path(graph, start_node, end_node):
+        '''Se encarga de buscar el camino más corto de un nodo al otro'''
         if is_real_map(graph):
-            # AirSpace version
             start_point = next((p for p in graph.nav_points if p['name'] == start_node.name), None)
             end_point = next((p for p in graph.nav_points if p['name'] == end_node.name), None)
 
             if not start_point or not end_point:
                 return None
-
-            # Dijkstra's algorithm implementation for real maps
             distances = {p['name']: float('inf') for p in graph.nav_points}
             previous = {p['name']: None for p in graph.nav_points}
             distances[start_node.name] = 0
             queue = [(0, start_node.name)]
-
             while queue:
                 current_dist, current_name = heapq.heappop(queue)
                 if current_name == end_node.name:
                     break
-
                 if current_dist > distances[current_name]:
                     continue
-
                 current_point = next(p for p in graph.nav_points if p['name'] == current_name)
                 for seg in [s for s in graph.nav_segments if s['origin_id'] == current_point['id']]:
                     neighbor = next(p for p in graph.nav_points if p['id'] == seg['dest_id'])
@@ -169,16 +157,12 @@ def find_closest_path_entries():
                         distances[neighbor['name']] = new_dist
                         previous[neighbor['name']] = current_name
                         heapq.heappush(queue, (new_dist, neighbor['name']))
-
-            # Path reconstruction
             path = []
             current = end_node.name
             while current:
                 path.insert(0, current)
                 current = previous.get(current)
-
             if distances[end_node.name] != float('inf'):
-                # Corrected segment filtering
                 path_segments = []
                 for p, q in zip(path[:-1], path[1:]):
                     p_id = next(point['id'] for point in graph.nav_points if point['name'] == p)
@@ -187,22 +171,18 @@ def find_closest_path_entries():
                                     if s['origin_id'] == p_id and s['dest_id'] == q_id), None)
                     if segment:
                         path_segments.append(segment)
-
                 return {
                     'path': path,
                     'distance': distances[end_node.name],
                     'points': [p for p in graph.nav_points if p['name'] in path],
-                    'segments': path_segments
-                }
+                    'segments': path_segments}
             return None
         else:
-            # Original graph version
             distances = {node: float('inf') for node in graph.nodes}
             previous_nodes = {node: None for node in graph.nodes}
             distances[start_node] = 0
             priority_queue = []
             heapq.heappush(priority_queue, (0, start_node.name, start_node))
-
             while priority_queue:
                 current_distance, _, current_node = heapq.heappop(priority_queue)
                 if current_node == end_node:
@@ -222,13 +202,11 @@ def find_closest_path_entries():
                         distances[neighbor] = distance
                         previous_nodes[neighbor] = current_node
                         heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
-
             path = []
             current = end_node
             while current is not None:
                 path.insert(0, current)
                 current = previous_nodes.get(current, None)
-
             if distances[end_node] != float('inf'):
                 path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
                 for i in range(len(path) - 1):
@@ -379,7 +357,7 @@ def find_closest_path_entries():
 
 def show_paths():
     """Muestra todos los posibles caminos de un nodo establecido"""
-    global G  # Make sure we're using the current graph
+    global G
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
@@ -395,23 +373,19 @@ def show_paths():
         ax.set_axisbelow(True)
 
         if is_real_map(G):
-            # Handle AirSpace case
             start_node = next((p for p in G.nav_points if p['name'] == node_name), None)
             if not start_node:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
                 return
-
             visited = set()
             path_segments = set()
             queue = [start_node['id']]
             visited.add(start_node['id'])
-
             while queue:
                 current_id = queue.pop(0)
                 current_node = next((p for p in G.nav_points if p['id'] == current_id), None)
                 if not current_node:
                     continue
-
                 for seg in [s for s in G.nav_segments if s['origin_id'] == current_id]:
                     neighbor_id = seg['dest_id']
                     neighbor = next((p for p in G.nav_points if p['id'] == neighbor_id), None)
@@ -419,8 +393,6 @@ def show_paths():
                         path_segments.add((current_id, neighbor_id))
                         visited.add(neighbor_id)
                         queue.append(neighbor_id)
-
-            # Draw nodes
             for point in G.nav_points:
                 color = 'gray'
                 if point['name'] == node_name:
@@ -430,8 +402,6 @@ def show_paths():
                 ax.plot(point['lon'], point['lat'], 'o', color=color, markersize=8, zorder=3)
                 ax.text(point['lon'], point['lat'], point['name'],
                         color='black', ha='left', va='bottom', zorder=4)
-
-            # Draw segments
             for seg in G.nav_segments:
                 origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
                 dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
@@ -443,17 +413,14 @@ def show_paths():
                             [origin['lat'], dest['lat']],
                             color=color, linewidth=1.5, zorder=z)
         else:
-            # Original graph handling
             start_node = SearchNode(G, node_name)
             if not start_node:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
                 return
-
             visited = set()
             path_segments = set()
             queue = [start_node]
-            visited.add(start_node.name)  # Use node name as hashable key
-
+            visited.add(start_node.name)
             while queue:
                 current_node = queue.pop(0)
                 for seg in [s for s in G.segments if s.origin == current_node]:
@@ -462,8 +429,6 @@ def show_paths():
                         path_segments.add(seg)
                         visited.add(neighbor.name)
                         queue.append(neighbor)
-
-            # Draw nodes
             for node in G.nodes:
                 color = 'gray'
                 if node == start_node:
@@ -473,8 +438,6 @@ def show_paths():
                 ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
                 ax.text(node.x, node.y, node.name,
                         color='black', ha='left', va='bottom', zorder=4)
-
-            # Draw segments
             for seg in G.segments:
                 is_path_segment = seg in path_segments
                 color = 'blue' if is_path_segment else 'gray'
@@ -482,7 +445,6 @@ def show_paths():
                 ax.plot([seg.origin.x, seg.destination.x],
                         [seg.origin.y, seg.destination.y],
                         color=color, linewidth=1.5, zorder=z)
-
         if canvas:
             canvas.get_tk_widget().destroy()
         canvas = FigureCanvasTkAgg(fig, master=root)
@@ -498,7 +460,6 @@ def show_paths():
             return
         PlotAllPaths(node_name)
         e_paths.delete(0, 'end')
-
     paths_entry = [e_paths]
     work_with_entry(paths_entry, search_paths)
     search_btn = tk.Button(

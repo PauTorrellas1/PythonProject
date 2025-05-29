@@ -44,26 +44,19 @@ def CreateGraph_1 ():
     return G
 
 def show_new_graph():
+    '''esta función limpia la GUI y muestra el gráfico'''
     global fig, ax, canvas
-
-    # Clear the existing plot instead of creating new figure
     if 'ax' in globals():
         ax.clear()
     else:
         fig = Figure(figsize=(8.5, 7), dpi=100)
         ax = fig.add_subplot(111)
-
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
-
     if is_real_map(G):
-        # Handle AirSpace map
-        # Draw navigation points
         for point in G.nav_points:
             ax.plot(point['lon'], point['lat'], 'ko', markersize=3)
             ax.text(point['lon'], point['lat'], point['name'], fontsize=7, color='black')
-
-        # Draw segments
         for seg in G.nav_segments:
             origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
             dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
@@ -71,32 +64,22 @@ def show_new_graph():
                 ax.plot([origin['lon'], dest['lon']],
                         [origin['lat'], dest['lat']],
                         'blue', linewidth=1.5, zorder=1)
-
-                # Cost label styling
                 ax.text((origin['lon'] + dest['lon']) / 2,
                         (origin['lat'] + dest['lat']) / 2,
                         f"{seg['distance']:.2f}",
                         color='black', fontsize=8, zorder=3)
     else:
-        # Handle regular graph
-        # Draw segments and costs
         for seg in G.segments:
             ax.plot([seg.origin.x, seg.destination.x],
                     [seg.origin.y, seg.destination.y],
                     'blue', linewidth=1.5, zorder=1)
-
-            # Cost label styling
             ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
                     (seg.origin.y + seg.destination.y) / 2 + 0.2,
                     f"{seg.cost:.2f}",
                     color='black', fontsize=8, zorder=3)
-
-        # Draw nodes
         for node in G.nodes:
             ax.plot(node.x, node.y, 'ko', markersize=3)
             ax.text(node.x, node.y, node.name, fontsize=7, color='black')
-
-    # Update the canvas instead of creating new one
     if 'canvas' not in globals() or not canvas.get_tk_widget().winfo_exists():
         canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
@@ -124,6 +107,7 @@ path_info_text = tk.Text(
 path_info_text.pack(fill=tk.BOTH, expand=True)
 
 def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
+    '''definimos la configuración que deberán tener los botones que usemos'''
     tk.Button(master=master,
         text=tex,
         command=command,
@@ -135,6 +119,7 @@ def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
         wraplength=1000).grid(row=row, column=column)
 
 def label(text, row, column,master=root):
+    '''definimos una caja donde podremos mostrar mensajes'''
     tk.Label(master=master, text=text, padx=10).grid(row=row, column=column)
 
 def show_graph():
@@ -164,86 +149,66 @@ def restore_main_view():
     Entries()
     show_new_graph()
 
-
 def print_graph_info():
-    """Shows all graph info in a window and saves in correct format"""
+    """Muestra todos los grafos en una ventanita donde el usuario puede asegurarse de que toda la información ha sido propiamente guardad"""
 
     def detect_region():
-        """Identifies if this is a known real map."""
-        # Check if this is one of our standard regions
+        """identifica si este es un mapa inventado o uno real """
         if any(p.get('name') == 'LEBL' for p in G.nav_points):  # Barcelona
             return 'Cat'
         elif any(p.get('name') == 'LEMD' for p in G.nav_points):  # Madrid
             return 'Spain'
         elif any(p.get('name') == 'EGLL' for p in G.nav_points):  # London
             return 'ECAC'
-
-        # If not standard region, check if we have the prefix stored
         if hasattr(G, 'loaded_prefix'):
             return G.loaded_prefix
 
-        return None
 
     def save_info():
-        """Handles saving in appropriate format"""
+        """Permite guardar el gráfo"""
         if is_real_map(G):
             prefix = detect_region()
             if prefix:
                 try:
-                    # Save airports
                     with open(f'{prefix}_aer.txt', 'w') as f:
                         f.write("\n".join(sorted(G.nav_airports)))
-
-                    # Save nav points
                     with open(f'{prefix}_nav.txt', 'w') as f:
                         for p in sorted(G.nav_points, key=lambda x: int(x['id'])):
                             f.write(f"{p['id']} {p['name']} {p['lat']} {p['lon']}\n")
-
-                    # Save segments
                     with open(f'{prefix}_seg.txt', 'w') as f:
                         for s in G.nav_segments:
                             f.write(f"{s['origin_id']} {s['dest_id']} {s['distance']}\n")
-
                     show_message(f"Saved real map to {prefix}_aer.txt, {prefix}_nav.txt, {prefix}_seg.txt")
                 except Exception as e:
                     show_message(f"Save error: {str(e)}", is_error=True)
             else:
                 show_message("Could not detect map region", is_error=True)
         else:
-            # Original single-file save
             with open('Graph_information.txt', 'w') as f:
                 if G.nodes:
                     f.write("\n".join(f"N,{n.name},{n.x},{n.y}" for n in G.nodes))
                 if G.segments:
                     f.write("\n" + "\n".join(
                         f"S,{s.name},{s.origin.name},{s.destination.name}"
-                        for s in G.segments
-                    ))
+                        for s in G.segments))
             show_message("Saved graph to Graph_information.txt")
 
-    # Create preview window
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
     text_frame = tk.Frame(info_window)
     text_frame.pack(fill=tk.BOTH, expand=True)
-
     scrollbar = tk.Scrollbar(text_frame)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
     text_widget = tk.Text(
         text_frame,
         wrap=tk.WORD,
         yscrollcommand=scrollbar.set,
-        font=("Consolas", 10)
-    )
+        font=("Consolas", 10))
     text_widget.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=text_widget.yview)
-
-    # Generate info text
     info_text = "=== GRAPH INFORMATION ===\n\n"
 
     if is_real_map(G):
-        # Real map info
         if hasattr(G, 'nav_points') and G.nav_points:
             info_text += "NAVIGATION POINTS:\n"
             for point in G.nav_points:
@@ -257,7 +222,6 @@ def print_graph_info():
                 info_text += f"- {airport}\n"
         else:
             info_text += "No airports in the graph\n"
-
         info_text += "\nSEGMENTS:\n"
         if hasattr(G, 'nav_segments') and G.nav_segments:
             for segment in G.nav_segments:
@@ -275,7 +239,6 @@ def print_graph_info():
                 info_text += f"- {node.name}: (x={node.x}, y={node.y})\n"
         else:
             info_text += "No nodes in the graph\n"
-
         info_text += "\nSEGMENTS:\n"
         if hasattr(G, 'segments') and G.segments:
             for segment in G.segments:
@@ -283,20 +246,16 @@ def print_graph_info():
                 info_text += f"- {segment.name}: {segment.origin.name} -> {segment.destination.name} (Distance: {dist})\n"
         else:
             info_text += "No segments in the graph\n"
-
     text_widget.insert(tk.END, info_text)
 
-    # Buttons
     btn_frame = tk.Frame(info_window)
     btn_frame.pack(pady=10)
-
     tk.Button(
         btn_frame,
         text='Save',
         command=lambda: [save_info(), info_window.destroy()],
         width=15
     ).pack(side=tk.RIGHT, padx=10)
-
     tk.Button(
         btn_frame,
         text="Close",
@@ -305,38 +264,31 @@ def print_graph_info():
     ).pack(side=tk.LEFT, padx=10)
 
 def import_map():
+    '''Esta función será la encargada de importar todos los gráficos reales que queramos'''
     for widget in root.winfo_children():
         if widget.grid_info().get('column', 0) in [2, 3, 4]:
             widget.destroy()
-
     tk.Label(root, text="Real map to import:").grid(row=0, column=2)
     e_map_name = tk.Entry(root)
     e_map_name.grid(row=0, column=3)
 
     def load_map(event=None):
+        '''Esta función cargará el mapa que queramos importar'''
         region = e_map_name.get().strip()
         try:
-            # Create and load the airspace
             airspace = AirSpace().load_real_map(region)
-
-            # Update the global graph reference
             global edited_G, G, current_display_mode, airspace_instance
             edited_G = airspace
             G = edited_G
             current_display_mode = "edited"
-            airspace_instance = airspace  # Store the instance
+            airspace_instance = airspace
             set_graph(G)
-
-            # Update the display
             Plot(G)
             show_message(f"Successfully loaded {region} map")
-
             if e_map_name.winfo_exists():
                 e_map_name.delete(0, 'end')
-
         except Exception as e:
             show_message(f"Error loading map: {str(e)}", is_error=True)
-
     e_map_name.bind('<Return>', load_map)
     tk.Button(
         root,
@@ -355,24 +307,20 @@ def show_neighbors():
     e_neighbor.grid(row=0, column=3)
 
     def highlight_neighbors(node_name):
+        '''La función es la encargada de subrayar cada uno de los vecninos que debamos subrayar'''
         global fig, ax, canvas, G
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
         ax.set_axisbelow(True)
-
         node_name = node_name.strip()
         if not node_name:
             show_message("Enter a node name", is_error=True)
             return
-
         if is_real_map(G):
-            # Handle real map case - use G (which is the AirSpace instance)
             node_point = next((p for p in G.nav_points if p['name'] == node_name), None)
             if not node_point:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
                 return
-
-            # Find all connected points
             connected_points = []
             for seg in G.nav_segments:
                 if seg['origin_id'] == node_point['id']:
@@ -383,12 +331,9 @@ def show_neighbors():
                     origin_point = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
                     if origin_point:
                         connected_points.append(origin_point)
-
             if not connected_points:
                 show_message(f"Node '{node_name}' has no neighbors", is_error=True)
                 return
-
-            # Draw all points first
             for point in G.nav_points:
                 color = 'gray'
                 if point['name'] == node_name:
@@ -397,24 +342,18 @@ def show_neighbors():
                     color = 'green'
                 ax.plot(point['lon'], point['lat'], 'o', color=color, markersize=8)
                 ax.text(point['lon'], point['lat'], point['name'], color='black', ha='left', va='bottom')
-
-            # Draw connections to neighbors
             for neighbor in connected_points:
                 ax.plot([node_point['lon'], neighbor['lon']],
                         [node_point['lat'], neighbor['lat']],
                         'r-', linewidth=2)
         else:
-            # Original graph handling remains the same
             node = SearchNode(G, node_name)
             if not node:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
                 return
-
             if not node.neighbors:
                 show_message(f"Node '{node_name}' has no neighbors", is_error=True)
                 return
-
-            # Draw all nodes first
             for n in G.nodes:
                 color = 'gray'
                 if n == node:
@@ -423,8 +362,6 @@ def show_neighbors():
                     color = 'green'
                 ax.plot(n.x, n.y, 'o', color=color, markersize=8)
                 ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
-
-            # Draw connections to neighbors
             for neighbor in node.neighbors:
                 seg = None
                 for s in G.segments:
@@ -432,7 +369,6 @@ def show_neighbors():
                             s.origin == neighbor and s.destination == node):
                         seg = s
                         break
-
                 if seg:
                     dx = neighbor.x - node.x
                     dy = neighbor.y - node.y
@@ -445,7 +381,6 @@ def show_neighbors():
                                  head_width=0.5, head_length=0.5,
                                  fc='red', ec='red',
                                  length_includes_head=True)
-
         if 'canvas' in globals() and canvas:
             canvas.get_tk_widget().destroy()
         canvas = FigureCanvasTkAgg(fig, master=root)
@@ -453,6 +388,7 @@ def show_neighbors():
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
     def search_and_clear(event=None):
+        '''Busca la entrada, corre la funicón de subrayar y elimina la entrada de texto'''
         node_name = e_neighbor.get().strip()
         highlight_neighbors(node_name)
         e_neighbor.delete(0, 'end')
@@ -477,7 +413,7 @@ def create_new_graph():
 
 def confirm_new_graph():
     """Esta función le recuerda al usuario que de continuar
-     perderá su antiguo gráfico"""
+     perderá su antiguo gráfico, y le da la opción de hacer lo que él desee"""
     for widget in root.winfo_children():
         if isinstance(widget, tk.Toplevel) and widget.title() == "Confirm":
             widget.destroy()
@@ -509,6 +445,7 @@ def confirm_new_graph():
     button_frame.pack(pady=5)
 
     def on_yes_confirm():
+        '''Confirma que está dispuesto a continuar con la creación de un nuevo gráfico'''
         confirm_window.destroy()
         create_new_graph()
     btn_style = {
@@ -530,19 +467,16 @@ def find_best_route():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
 
-
 def export_to_kml(graph):
+    '''Con esta función exportamos el gráfico a formato KTML para así luego
+    poder usarlo y visualizarlo en google earth'''
     filename = filedialog.asksaveasfilename(
         defaultextension=".kml",
         filetypes=[("KML Files", "*.kml"), ("All Files", "*.*")],
         title="Save KML File As",
-        initialfile="airspace_map.kml"
-    )
-
+        initialfile="airspace_map.kml")
     if not filename:
         return
-
-    # Define all KML templates
     kml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
@@ -551,7 +485,6 @@ def export_to_kml(graph):
     {content}
 </Document>
 </kml>"""
-
     placemark_template = """<Placemark>
         <name>{name}</name>
         <Point>
@@ -565,7 +498,6 @@ def export_to_kml(graph):
             </IconStyle>
         </Style>
     </Placemark>"""
-
     airport_template = """<Placemark>
         <name>{name} Airport</name>
         <Point>
@@ -579,7 +511,6 @@ def export_to_kml(graph):
             </IconStyle>
         </Style>
     </Placemark>"""
-
     line_template = """<Placemark>
         <name>{name}</name>
         <LineString>
@@ -593,7 +524,6 @@ def export_to_kml(graph):
             </LineStyle>
         </Style>
     </Placemark>"""
-
     path_line_template = """<Placemark>
         <name>Path: {name}</name>
         <LineString>
@@ -607,78 +537,56 @@ def export_to_kml(graph):
             </LineStyle>
         </Style>
     </Placemark>"""
-
     content = []
-
     if is_real_map(graph):
-        # Add navigation points
+        #Si es un gráfico real importado:
         for point in graph.nav_points:
             content.append(placemark_template.format(
                 name=point['name'],
                 lon=point['lon'],
-                lat=point['lat']
-            ))
-
-        # Add airports with different icons
+                lat=point['lat']))
         for airport in graph.nav_airports:
             point = next((p for p in graph.nav_points if p['name'] == airport), None)
             if point:
                 content.append(airport_template.format(
                     name=point['name'],
                     lon=point['lon'],
-                    lat=point['lat']
-                ))
-
-        # Add segments
+                    lat=point['lat']))
         for seg in graph.nav_segments:
             origin = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
             dest = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
-
             if origin and dest:
                 content.append(line_template.format(
                     name=f"{origin['name']} to {dest['name']}",
-                    coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"
-                ))
-
-        # Add current path if exists
+                    coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"))
         if hasattr(graph, 'current_path'):
             path_coords = []
             for point_name in graph.current_path['path']:
                 point = next((p for p in graph.nav_points if p['name'] == point_name), None)
                 if point:
                     path_coords.append(f"{point['lon']},{point['lat']},0")
-
             if len(path_coords) > 1:
                 content.append(path_line_template.format(
                     name=f"{graph.current_path['path'][0]} to {graph.current_path['path'][-1]}",
-                    coords=" ".join(path_coords)
-                ))
+                    coords=" ".join(path_coords)))
     else:
-        # Handle regular graph export
         for node in graph.nodes:
             content.append(placemark_template.format(
                 name=node.name,
                 lon=node.x,
-                lat=node.y
-            ))
+                lat=node.y))
         for seg in graph.segments:
             content.append(line_template.format(
                 name=seg.name,
-                coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"
-            ))
-
-        # Add current path if exists
+                coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"))
         if hasattr(graph, 'current_path'):
             path_coords = []
             for node in graph.current_path.nodes:
                 path_coords.append(f"{node.x},{node.y},0")
-
             if len(path_coords) > 1:
                 content.append(path_line_template.format(
                     name=f"{graph.current_path.origin.name} to {graph.current_path.destination.name}",
-                    coords=" ".join(path_coords)
-                ))
-
+                    coords=" ".join(path_coords)))
     try:
         with open(filename, 'w') as f:
             f.write(kml_template.format(content='\n'.join(content)))
@@ -921,6 +829,7 @@ def Entries():
     label("", 0, 4),label("", 0, 6)#serves as a separator for the graph
 Entries()
 def close():
+    '''Cerramos y destruimos la ventana'''
     p.close('all')
     root.destroy()
 button(lambda: close(),"Exit", 0, 7,"red",width=5,pady=10)
