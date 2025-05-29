@@ -16,8 +16,9 @@ class AirSpace:
             raise ValueError(f"Unknown region: {region}")
 
         prefix = standard_regions[region]
+        self.loaded_prefix = prefix  # Store the prefix used to load this map
 
-        # Load navigation points
+        # Rest of the loading code remains the same...
         with open(f'{prefix}_nav.txt', 'r') as f:
             for line in f:
                 parts = line.strip().split()

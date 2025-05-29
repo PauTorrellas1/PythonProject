@@ -170,12 +170,18 @@ def print_graph_info():
 
     def detect_region():
         """Identifies if this is a known real map."""
+        # Check if this is one of our standard regions
         if any(p.get('name') == 'LEBL' for p in G.nav_points):  # Barcelona
             return 'Cat'
         elif any(p.get('name') == 'LEMD' for p in G.nav_points):  # Madrid
             return 'Spain'
         elif any(p.get('name') == 'EGLL' for p in G.nav_points):  # London
             return 'ECAC'
+
+        # If not standard region, check if we have the prefix stored
+        if hasattr(G, 'loaded_prefix'):
+            return G.loaded_prefix
+
         return None
 
     def save_info():
