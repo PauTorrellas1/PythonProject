@@ -242,93 +242,89 @@ def find_closest_path_entries():
             return None
 
     def highlight_path(path_data):
+        """Remarcamos los caminos mostrados en la GUI usando el objeto Path"""
         global fig, ax, canvas
 
+        # Clear the plot
         ax.clear()
+
+        if isinstance(path_data, dict):  # AirSpace path
+            # Get all point names in the path for easy lookup
+            path_point_names = set(path_data['path'])
+
+            # Plot all points first (gray)
+            for point in G.nav_points:
+                # Determine point color
+                if point['name'] == path_data['path'][0]:  # Origin
+                    color = 'blue'
+                    markersize = 8
+                elif point['name'] == path_data['path'][-1]:  # Destination
+                    color = 'red'
+                    markersize = 8
+                elif point['name'] in path_point_names:  # Path point
+                    color = 'green'
+                    markersize = 7
+                else:  # Regular point
+                    color = 'gray'
+                    markersize = 5
+
+                ax.plot(point['lon'], point['lat'], 'o',
+                        color=color,
+                        markersize=markersize,
+                        zorder=3)
+                ax.text(point['lon'] + 0.05, point['lat'] + 0.05,
+                        point['name'],
+                        fontsize=8,
+                        zorder=4)
+
+            # Plot all segments first (gray)
+            for seg in G.nav_segments:
+                origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
+                dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
+
+                if not origin or not dest:
+                    continue  # Skip if points not found
+
+                # Check if this segment is in the path
+                is_path_segment = False
+                for i in range(len(path_data['path']) - 1):
+                    if (origin['name'] == path_data['path'][i] and
+                            dest['name'] == path_data['path'][i + 1]):
+                        is_path_segment = True
+                        break
+                    if (dest['name'] == path_data['path'][i] and
+                            origin['name'] == path_data['path'][i + 1]):
+                        is_path_segment = True
+                        break
+
+                if is_path_segment:
+                    # Path segment - red
+                    ax.plot([origin['lon'], dest['lon']],
+                            [origin['lat'], dest['lat']],
+                            'r-', linewidth=2, zorder=2)
+                else:
+                    # Regular segment - gray
+                    ax.plot([origin['lon'], dest['lon']],
+                            [origin['lat'], dest['lat']],
+                            '#CCCCCC', linewidth=1, zorder=1)
+
+                # Add distance label for all segments
+                ax.text((origin['lon'] + dest['lon']) / 2,
+                        (origin['lat'] + dest['lat']) / 2,
+                        f"{seg['distance']:.1f}",
+                        fontsize=8,
+                        zorder=3)
+        else:
+            # Original graph path plotting (keep existing style)
+            PlotPath(G, path_data)
+
+        # Common plot settings
         ax.grid(color="#717171", linestyle="--")
         ax.set_xlabel("Longitude")
         ax.set_ylabel("Latitude")
+        ax.set_title("Airspace Map")
 
-        if isinstance(path_data, dict):  # AirSpace path
-            # Plot all points in gray
-            for point in G.nav_points:
-                ax.plot(point.longitude, point.latitude, 'o', color='gray', markersize=4, zorder=2)
-                ax.text(point.longitude + 0.05, point.latitude + 0.05, point.name, fontsize=8, zorder=3)
-
-            # Plot all segments in gray
-            for seg in G.nav_segments:
-                origin = next(p for p in G.nav_points if p.number == seg.origin_number)
-                dest = next(p for p in G.nav_points if p.number == seg.destination_number)
-                ax.plot([origin.longitude, dest.longitude],
-                        [origin.latitude, dest.latitude],
-                        'gray', linewidth=1, zorder=1)
-
-            # Highlight path points
-            path_points = []
-            for point_name in path_data['path']:
-                point = next(p for p in G.nav_points if p.name == point_name)
-                path_points.append(point)
-
-            if path_points:
-                # Origin point (blue)
-                ax.plot(path_points[0].longitude, path_points[0].latitude, 'bo', markersize=6, zorder=4)
-
-                # Destination point (red)
-                ax.plot(path_points[-1].longitude, path_points[-1].latitude, 'ro', markersize=6, zorder=4)
-
-                # Intermediate points (green)
-                for point in path_points[1:-1]:
-                    ax.plot(point.longitude, point.latitude, 'go', markersize=6, zorder=4)
-
-            # Highlight path segments in red
-            for seg in path_data['segments']:
-                origin = next(p for p in G.nav_points if p.number == seg.origin_number)
-                dest = next(p for p in G.nav_points if p.number == seg.destination_number)
-                ax.plot([origin.longitude, dest.longitude],
-                        [origin.latitude, dest.latitude],
-                        'r-', linewidth=2, zorder=3)
-
-                # Add distance label
-                ax.text((origin.longitude + dest.longitude) / 2,
-                        (origin.latitude + dest.latitude) / 2,
-                        f"{seg.distance:.1f}", fontsize=8, zorder=5)
-
-        else:  # Original graph path
-            # Plot all nodes in gray
-            for node in G.nodes:
-                ax.plot(node.x, node.y, 'o', color='gray', markersize=8, zorder=2)
-                ax.text(node.x, node.y, node.name, fontsize=10, zorder=3)
-
-            # Plot all segments in gray
-            for seg in G.segments:
-                ax.plot([seg.origin.x, seg.destination.x],
-                        [seg.origin.y, seg.destination.y],
-                        'gray', linewidth=1, zorder=1)
-
-            # Highlight path nodes
-            path_nodes = path_data.nodes
-            if path_nodes:
-                # Origin node (blue)
-                ax.plot(path_nodes[0].x, path_nodes[0].y, 'bo', markersize=10, zorder=4)
-
-                # Destination node (red)
-                ax.plot(path_nodes[-1].x, path_nodes[-1].y, 'ro', markersize=10, zorder=4)
-
-                # Intermediate nodes (green)
-                for node in path_nodes[1:-1]:
-                    ax.plot(node.x, node.y, 'go', markersize=10, zorder=4)
-
-            # Highlight path segments in red
-            for seg in path_data.segments:
-                ax.plot([seg.origin.x, seg.destination.x],
-                        [seg.origin.y, seg.destination.y],
-                        'r-', linewidth=2, zorder=3)
-
-                # Add cost label
-                ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
-                        (seg.origin.y + seg.destination.y) / 2 + 0.2,
-                        f"{seg.cost:.2f}", fontsize=8, zorder=5)
-
+        # Update the canvas
         canvas.draw()
 
     def search_closest_path(event=None):
