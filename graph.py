@@ -45,8 +45,10 @@ def SearchNode(g, name):
         # For real maps, search in nav_points
         point = next((p for p in g.nav_points if p['name'] == name), None)
         if point:
-            # Return a simple object with the required attributes
-            return SimpleNamespace(name=point['name'], x=point['lon'], y=point['lat'])
+            # Create a hashable SimpleNamespace by implementing __hash__
+            ns = SimpleNamespace(name=point['name'], x=point['lon'], y=point['lat'])
+            ns.__hash__ = lambda self: hash(self.name)
+            return ns
         return None
     else:
         # Búsqueda de nodo original

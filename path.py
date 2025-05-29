@@ -360,7 +360,10 @@ def find_closest_path_entries():
 
         if path_data:
             highlight_path(path_data)
-            show_message(f"Path found with distance: {path_data['distance']:.2f}")
+            if isinstance(path_data, dict):
+                show_message(f"Path found with distance: {path_data['distance']:.2f}")
+            else:  # It's a Path object
+                show_message(f"Path found with distance: {path_data.cost:.2f}")
         else:
             show_message(f"No path exists between {node_from} and {node_to}", is_error=True)
     search_btn = tk.Button(
