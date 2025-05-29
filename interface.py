@@ -1,4 +1,6 @@
 from path import *
+from tkinter import filedialog
+from googleearth_exporting import *
 
 def CreateGraph_1 ():
     '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
@@ -41,7 +43,6 @@ def CreateGraph_1 ():
     AddSegment(G, "LK","L","K")
     AddSegment(G, "LF","L","F")
     return G
-
 
 def show_new_graph():
     global fig, ax, canvas
@@ -523,6 +524,145 @@ def confirm_new_graph():
     tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
     confirm_window.wait_window()
 
+def export_to_kml(graph):
+    filename = filedialog.asksaveasfilename(
+        defaultextension=".kml",
+        filetypes=[("KML Files", "*.kml"), ("All Files", "*.*")],
+        title="Save KML File As",
+        initialfile="airspace_map.kml"
+    )
+
+    if not filename:
+        return
+
+    # Define all KML templates
+    kml_template = """<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+<Document>
+{content}
+</Document>
+</kml>"""
+
+    placemark_template = """<Placemark>
+        <name>{name}</name>
+        <Point>
+        <coordinates>{lon},{lat}</coordinates>
+        </Point>
+    </Placemark>"""
+
+    line_template = """<Placemark>
+        <name>{name}</name>
+        <LineString>
+        <altitudeMode>clampToGround</altitudeMode>
+        <extrude>1</extrude>
+        <tessellate>1</tessellate>
+        <coordinates>{coords}</coordinates>
+        </LineString>
+    </Placemark>"""
+
+    control_tower_template = """<Placemark>
+        <name>{name} Control Tower</name>
+        <Model>
+            <altitudeMode>relativeToGround</altitudeMode>
+            <Location>
+                <longitude>{lon}</longitude>
+                <latitude>{lat}</latitude>
+                <altitude>0</altitude>
+            </Location>
+            <Orientation>
+                <heading>0</heading>
+                <tilt>0</tilt>
+                <roll>0</roll>
+            </Orientation>
+            <Scale>
+                <x>20</x>
+                <y>20</y>
+                <z>20</z>
+            </Scale>
+            <Link>
+                <href>https://raw.githubusercontent.com/googlearchive/kml-samples/master/kml/Model/tower.dae</href>
+            </Link>
+        </Model>
+    </Placemark>"""
+
+    weather_radar_template = """<GroundOverlay>
+        <name>Weather Radar</name>
+        <Icon>
+            <href>https://www.example.com/path/to/radar/image.png</href>
+        </Icon>
+        <LatLonBox>
+            <north>{north}</north>
+            <south>{south}</south>
+            <east>{east}</east>
+            <west>{west}</west>
+            <rotation>0</rotation>
+        </LatLonBox>
+    </GroundOverlay>"""
+
+    content = []
+
+    if is_real_map(graph):
+        # Add navigation points
+        for point in graph.nav_points:
+            content.append(placemark_template.format(
+                name=point['name'],
+                lon=point['lon'],
+                lat=point['lat']
+            ))
+
+        # Add control towers for airports
+        for airport in graph.nav_airports:
+            point = next((p for p in graph.nav_points if p['name'] == airport), None)
+            if point:
+                content.append(control_tower_template.format(
+                    name=point['name'],
+                    lon=point['lon'],
+                    lat=point['lat']
+                ))
+
+        # Add segments
+        for seg in graph.nav_segments:
+            origin = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
+            dest = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
+
+            if origin and dest:
+                content.append(line_template.format(
+                    name=f"{origin['name']} to {dest['name']}",
+                    coords=f"{origin['lon']},{origin['lat']} {dest['lon']},{dest['lat']}"
+                ))
+
+        # Add weather radar if there are points
+        if graph.nav_points:
+            lats = [p['lat'] for p in graph.nav_points]
+            lons = [p['lon'] for p in graph.nav_points]
+            content.append(weather_radar_template.format(
+                north=max(lats) + 1,
+                south=min(lats) - 1,
+                east=max(lons) + 1,
+                west=min(lons) - 1
+            ))
+
+    else:
+        # Handle regular graph export
+        for node in graph.nodes:
+            content.append(placemark_template.format(
+                name=node.name,
+                lon=node.x,
+                lat=node.y
+            ))
+
+        for seg in graph.segments:
+            content.append(line_template.format(
+                name=seg.name,
+                coords=f"{seg.origin.x},{seg.origin.y} {seg.destination.x},{seg.destination.y}"
+            ))
+
+    try:
+        with open(filename, 'w') as f:
+            f.write(kml_template.format(content='\n'.join(content)))
+        show_message(f"Successfully exported to {filename}")
+    except Exception as e:
+        show_message(f"Error saving file: {str(e)}", is_error=True)
 
 button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)#, master=plotting_frame)
 button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
@@ -531,6 +671,7 @@ button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=1
 button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)#, master=plotting_frame)
 button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
 button(lambda: import_map(), 'Import a real map', 6, 0, width=20,pady=10)
+button(lambda: export_to_kml(G), "Export to KML", 7, 0, width=20, pady=10)
 
 def Entries():
     '''Cada una de las entradas de texto que usaremos en el menú principal
