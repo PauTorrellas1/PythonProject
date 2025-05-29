@@ -166,61 +166,78 @@ def restore_main_view():
 
 
 def print_graph_info():
-    """Muestra todos los nodos y segmentos de un archivo guardado dentro del GUI"""
+    """Shows all graph info in a window and saves in correct format"""
+
+    def detect_region():
+        """Identifies if this is a known real map."""
+        if any(p.get('name') == 'LEBL' for p in G.nav_points):  # Barcelona
+            return 'Cat'
+        elif any(p.get('name') == 'LEMD' for p in G.nav_points):  # Madrid
+            return 'Spain'
+        elif any(p.get('name') == 'EGLL' for p in G.nav_points):  # London
+            return 'ECAC'
+        return None
 
     def save_info():
-        '''Guarda toda la información de los nodos y segmentos en un archivo que se puede abrir después'''
-        with open('Graph information', 'w') as graph_info:
-            if is_real_map(G):
-                # Save real map (AirSpace) information
-                if hasattr(G, 'nav_points') and G.nav_points:
-                    graph_info.write("=== NAVIGATION POINTS ===\n")
-                    for point in G.nav_points:
-                        graph_info.write(f"ID: {point['id']}, Name: {point['name']}, "
-                                         f"Lat: {point['lat']}, Lon: {point['lon']}\n")
+        """Handles saving in appropriate format"""
+        if is_real_map(G):
+            prefix = detect_region()
+            if prefix:
+                try:
+                    # Save airports
+                    with open(f'{prefix}_aer.txt', 'w') as f:
+                        f.write("\n".join(sorted(G.nav_airports)))
 
-                if hasattr(G, 'nav_airports') and G.nav_airports:
-                    graph_info.write("\n=== AIRPORTS ===\n")
-                    for airport in G.nav_airports:
-                        graph_info.write(f"{airport}\n")
+                    # Save nav points
+                    with open(f'{prefix}_nav.txt', 'w') as f:
+                        for p in sorted(G.nav_points, key=lambda x: int(x['id'])):
+                            f.write(f"{p['id']} {p['name']} {p['lat']} {p['lon']}\n")
 
-                if hasattr(G, 'nav_segments') and G.nav_segments:
-                    graph_info.write("\n=== SEGMENTS ===\n")
-                    for segment in G.nav_segments:
-                        origin = next((p for p in G.nav_points if p['id'] == segment['origin_id']), None)
-                        dest = next((p for p in G.nav_points if p['id'] == segment['dest_id']), None)
-                        if origin and dest:
-                            graph_info.write(f"{origin['name']} -> {dest['name']}: "
-                                             f"{segment['distance']:.2f} distance\n")
+                    # Save segments
+                    with open(f'{prefix}_seg.txt', 'w') as f:
+                        for s in G.nav_segments:
+                            f.write(f"{s['origin_id']} {s['dest_id']} {s['distance']}\n")
+
+                    show_message(f"Saved real map to {prefix}_aer.txt, {prefix}_nav.txt, {prefix}_seg.txt")
+                except Exception as e:
+                    show_message(f"Save error: {str(e)}", is_error=True)
             else:
-                # Original graph saving
-                if hasattr(G, 'nodes') and G.nodes:
-                    for node in G.nodes:
-                        graph_info.write(f'N,{node.name},{node.x},{node.y}\n')
-                else:
-                    show_message('There are not any nodes in the graph', is_error=True)
+                show_message("Could not detect map region", is_error=True)
+        else:
+            # Original single-file save
+            with open('Graph_information.txt', 'w') as f:
+                if G.nodes:
+                    f.write("\n".join(f"N,{n.name},{n.x},{n.y}" for n in G.nodes))
+                if G.segments:
+                    f.write("\n" + "\n".join(
+                        f"S,{s.name},{s.origin.name},{s.destination.name}"
+                        for s in G.segments
+                    ))
+            show_message("Saved graph to Graph_information.txt")
 
-                if hasattr(G, 'segments') and G.segments:
-                    for segment in G.segments:
-                        graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
-                else:
-                    show_message('There are not any segments in the graph', is_error=True)
-
-    global G
+    # Create preview window
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
     text_frame = tk.Frame(info_window)
     text_frame.pack(fill=tk.BOTH, expand=True)
+
     scrollbar = tk.Scrollbar(text_frame)
     scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    text_widget = tk.Text(text_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set)
+
+    text_widget = tk.Text(
+        text_frame,
+        wrap=tk.WORD,
+        yscrollcommand=scrollbar.set,
+        font=("Consolas", 10)
+    )
     text_widget.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=text_widget.yview)
 
+    # Generate info text
     info_text = "=== GRAPH INFORMATION ===\n\n"
 
     if is_real_map(G):
-        # Real map (AirSpace) information
+        # Real map info
         if hasattr(G, 'nav_points') and G.nav_points:
             info_text += "NAVIGATION POINTS:\n"
             for point in G.nav_points:
@@ -245,7 +262,7 @@ def print_graph_info():
         else:
             info_text += "No segments in the graph\n"
     else:
-        # Original graph information
+        # Regular graph info
         if hasattr(G, 'nodes') and G.nodes:
             info_text += "NODES:\n"
             for node in G.nodes:
@@ -263,12 +280,23 @@ def print_graph_info():
 
     text_widget.insert(tk.END, info_text)
 
-    save_button = tk.Button(info_window, text='Save the information',
-                            command=lambda: [save_info(), info_window.destroy()])
-    save_button.pack(pady=9)
-    close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
-    close_button.pack(pady=10)
+    # Buttons
+    btn_frame = tk.Frame(info_window)
+    btn_frame.pack(pady=10)
 
+    tk.Button(
+        btn_frame,
+        text='Save',
+        command=lambda: [save_info(), info_window.destroy()],
+        width=15
+    ).pack(side=tk.LEFT, padx=10)
+
+    tk.Button(
+        btn_frame,
+        text="Close",
+        command=info_window.destroy,
+        width=15
+    ).pack(side=tk.LEFT, padx=10)
 
 def import_map():
     for widget in root.winfo_children():
