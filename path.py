@@ -1,22 +1,7 @@
-from matplotlib.figure import Figure
 from graph import *
-import tkinter as tk
-from tkinter import ttk
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-from tkinter import messagebox
 import heapq
-import time
 import math
-
-root = tk.Tk()
-current_display_mode = "edited"
-message_label = None
-clear_timer = None
-error_window = None
-fig = Figure(figsize=(8.5, 7), dpi=100)
-ax = fig.add_subplot(111)
-canvas = FigureCanvasTkAgg(fig, master=root)
-canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 
 class Path:
@@ -52,7 +37,11 @@ class Path:
 def PlotPath(graph: Graph, path: Path):
     '''Plots path with clean cost labels'''
     global fig, ax, canvas
-    ax.clear()
+    if 'ax' not in globals():
+        fig = Figure(figsize=(8.5, 7), dpi=100)
+        ax = fig.add_subplot(111)
+    else:
+        ax.clear()
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
 
@@ -89,8 +78,11 @@ def PlotPath(graph: Graph, path: Path):
                 (seg.origin.y + seg.destination.y) / 2 + 0.2,
                 f"{seg.cost:.2f}",
                 color='black', fontsize=8, zorder=3)
-
-    canvas.draw()
+    if 'canvas' not in globals() or not canvas.get_tk_widget().winfo_exists():
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+    else:
+        canvas.draw()
     show_message(f"Displaying path from {path.origin.name} to {path.destination.name}")
 
 def set_graph(graph_instance):
@@ -108,108 +100,6 @@ def work_with_entry(controls, function):
         else:
             if isinstance(control, tk.Entry):
                 control.bind('<Return>', lambda e: function())
-
-def create_message_area():
-    """Crea un mensaje que se muestre al final de la GUI"""
-    global message_label
-    message_frame = tk.Frame(root)
-    message_frame.grid(row=20, column=1, columnspan=5, sticky="ew", padx=10, pady=5)
-    message_label = tk.Label(
-        message_frame,
-        text="",
-        fg="black",
-        wraplength=1000,
-        justify="left",
-        anchor="w")
-    message_label.pack(fill="x", expand=True)
-
-def show_message(message, is_error=False, persistent=False):
-    """Mostramos cierto mensaje en la GUI del área de mensaje creada antes"""
-    global message_label
-    if message_label is None:
-        create_message_area()
-
-    def show_modern_error(title, message, code=None):
-        '''Ajustes del mensaje de error que mostraremos en pantalla
-        cuando algo falle, ya sea por no haber rellenado todas las entradas
-        de cierta función o por haberlas rellenado de manera indebida'''
-        global error_window
-        if error_window is not None and error_window.winfo_exists():
-            error_window.destroy()
-        error_window = tk.Toplevel(root)
-        error_window.title(title)
-        error_window.resizable(False, False)
-        window_width = 500
-        window_height = 180
-        screen_width = error_window.winfo_screenwidth()
-        screen_height = error_window.winfo_screenheight()
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        error_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-        error_window.configure(bg='#2c2c2c')
-        error_window.attributes('-alpha', 0.98)
-        header_frame = tk.Frame(error_window, bg='#1e1e1e', height=25)
-        header_frame.pack(fill='x')
-        for color in ['#ff5f57', '#ffbd2e', '#28c840']:
-            tk.Canvas(header_frame, width=12, height=12, bg=color, bd=0, relief='flat').pack(side='left', padx=5,
-                                                                                             pady=6)
-        content_frame = tk.Frame(error_window, bg='#2c2c2c')
-        content_frame.pack(expand=True, fill='both', padx=20, pady=10)
-        icon_canvas = tk.Canvas(content_frame, width=60, height=60, bg='#2c2c2c', highlightthickness=0)
-        icon_canvas.create_polygon(30, 5, 55, 20, 55, 45, 30, 60, 5, 45, 5, 20, fill='#e74c3c')
-        icon_canvas.create_text(30, 32, text='!', font=("Segoe UI", 22, 'bold'), fill='white')
-        icon_canvas.grid(row=0, column=0, padx=10)
-        tk.Label(
-            content_frame,
-            text=message,
-            font=("Segoe UI", 12),
-            bg='#2c2c2c',
-            fg='white',
-            wraplength=380,
-            justify='left').grid(row=0, column=1, padx=10)
-        button_frame = tk.Frame(error_window, bg='#2c2c2c')
-        button_frame.pack(fill='x', pady=(10, 0))
-        ok_btn = tk.Button(
-            button_frame,
-            text="OK",
-            command=error_window.destroy,
-            bg='#007bff',
-            fg='white',
-            activebackground='#0056b3',
-            font=("Segoe UI", 10, 'bold'),
-            width=8,
-            relief='flat',
-            bd=0)
-        ok_btn.pack(side='right', padx=20)
-        error_window.grab_set()
-        error_window.transient(root)
-
-    def clear_message(delay=0):
-        """Borramos el mensaje después de un delay"""
-
-        def clear():
-            message_label.config(text="")
-
-        global clear_timer
-        if clear_timer:
-            root.after_cancel(clear_timer)
-        if delay > 0:
-            clear_timer = root.after(int(delay * 1000), lambda: message_label.config(text=""))
-        else:
-            clear()
-    clear_message()
-    if is_error:
-        formatted_message = f"Error: {message}"
-        message_label.config(fg="red")
-        show_modern_error("Error", message)
-    else:
-        formatted_message = message
-        message_label.config(fg="black")
-    message_label.config(text=formatted_message)
-    message_label.update_idletasks()
-    if not persistent:
-        if is_error:
-            clear_message(delay=5)
 
 def draw_segment(seg, color, width, zorder, reverse=False):
     """Dibujamos los segmentos, con sus líneas y flechas corresponientes para
@@ -249,100 +139,247 @@ def find_closest_path_entries():
     e_path_to.grid(row=3, column=3)
 
     def finding_shortest_path(graph, start_node, end_node):
-        """Esta función encuentra el camino más corto entre dos nodos y lo retorna"""
-        distances = {node: float('inf') for node in graph.nodes}
-        previous_nodes = {node: None for node in graph.nodes}
-        distances[start_node] = 0
-        priority_queue = []
-        heapq.heappush(priority_queue, (0, start_node.name, start_node))
+        if is_real_map(graph):
+            # AirSpace version
+            start_point = next((p for p in graph.nav_points if p['name'] == start_node.name), None)
+            end_point = next((p for p in graph.nav_points if p['name'] == end_node.name), None)
 
-        while priority_queue:
-            current_distance, _, current_node = heapq.heappop(priority_queue)
-            if current_node == end_node:
-                break
-            if current_distance > distances[current_node]:
-                continue
+            if not start_point or not end_point:
+                return None
 
-            for neighbor in current_node.neighbors:
-                # Find the connecting segment
-                segment = None
-                for s in graph.segments:
-                    if s.origin == current_node and s.destination == neighbor:
-                        segment = s
-                        break
+            # Dijkstra's algorithm implementation for real maps
+            distances = {p['name']: float('inf') for p in graph.nav_points}
+            previous = {p['name']: None for p in graph.nav_points}
+            distances[start_node.name] = 0
+            queue = [(0, start_node.name)]
 
-                if not segment:
+            while queue:
+                current_dist, current_name = heapq.heappop(queue)
+                if current_name == end_node.name:
+                    break
+
+                if current_dist > distances[current_name]:
                     continue
 
-                distance = current_distance + segment.cost
-                if distance < distances[neighbor]:
-                    distances[neighbor] = distance
-                    previous_nodes[neighbor] = current_node
-                    heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+                current_point = next(p for p in graph.nav_points if p['name'] == current_name)
+                for seg in [s for s in graph.nav_segments if s['origin_id'] == current_point['id']]:
+                    neighbor = next(p for p in graph.nav_points if p['id'] == seg['dest_id'])
+                    new_dist = current_dist + seg['distance']
+                    if new_dist < distances[neighbor['name']]:
+                        distances[neighbor['name']] = new_dist
+                        previous[neighbor['name']] = current_name
+                        heapq.heappush(queue, (new_dist, neighbor['name']))
 
-        # Reconstruct path
-        path = []
-        current = end_node
-        while current is not None:
-            path.insert(0, current)
-            current = previous_nodes.get(current, None)
+            # Path reconstruction
+            path = []
+            current = end_node.name
+            while current:
+                path.insert(0, current)
+                current = previous.get(current)
 
-        if distances[end_node] != float('inf'):
-            path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
-            for i in range(len(path) - 1):
-                from_node = path[i]
-                to_node = path[i + 1]
-                for seg in graph.segments:
-                    if seg.origin == from_node and seg.destination == to_node:
-                        path_obj.AddNodeToPath(to_node, seg)
-                        break
-            return path_obj
-        return None
+            if distances[end_node.name] != float('inf'):
+                # Corrected segment filtering
+                path_segments = []
+                for p, q in zip(path[:-1], path[1:]):
+                    p_id = next(point['id'] for point in graph.nav_points if point['name'] == p)
+                    q_id = next(point['id'] for point in graph.nav_points if point['name'] == q)
+                    segment = next((s for s in graph.nav_segments
+                                    if s['origin_id'] == p_id and s['dest_id'] == q_id), None)
+                    if segment:
+                        path_segments.append(segment)
 
-    def highlight_path(path_obj):
-        """Remarcamos los caminos mostrados en la GUI usando el objeto Path"""
-        PlotPath(G, path_obj)
+                return {
+                    'path': path,
+                    'distance': distances[end_node.name],
+                    'points': [p for p in graph.nav_points if p['name'] in path],
+                    'segments': path_segments
+                }
+            return None
+        else:
+            # Original graph version
+            distances = {node: float('inf') for node in graph.nodes}
+            previous_nodes = {node: None for node in graph.nodes}
+            distances[start_node] = 0
+            priority_queue = []
+            heapq.heappush(priority_queue, (0, start_node.name, start_node))
+
+            while priority_queue:
+                current_distance, _, current_node = heapq.heappop(priority_queue)
+                if current_node == end_node:
+                    break
+                if current_distance > distances[current_node]:
+                    continue
+                for neighbor in current_node.neighbors:
+                    segment = None
+                    for s in graph.segments:
+                        if s.origin == current_node and s.destination == neighbor:
+                            segment = s
+                            break
+                    if not segment:
+                        continue
+                    distance = current_distance + segment.cost
+                    if distance < distances[neighbor]:
+                        distances[neighbor] = distance
+                        previous_nodes[neighbor] = current_node
+                        heapq.heappush(priority_queue, (distance, neighbor.name, neighbor))
+
+            path = []
+            current = end_node
+            while current is not None:
+                path.insert(0, current)
+                current = previous_nodes.get(current, None)
+
+            if distances[end_node] != float('inf'):
+                path_obj = Path(f"{start_node.name}_to_{end_node.name}", start_node, end_node, distances[end_node])
+                for i in range(len(path) - 1):
+                    from_node = path[i]
+                    to_node = path[i + 1]
+                    for seg in graph.segments:
+                        if seg.origin == from_node and seg.destination == to_node:
+                            path_obj.AddNodeToPath(to_node, seg)
+                            break
+                return path_obj
+            return None
+
+    def highlight_path(path_data):
+        global fig, ax, canvas
+
+        ax.clear()
+        ax.grid(color="#717171", linestyle="--")
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+        if isinstance(path_data, dict):  # AirSpace path
+            # Plot all points in gray
+            for point in G.nav_points:
+                ax.plot(point.longitude, point.latitude, 'o', color='gray', markersize=4, zorder=2)
+                ax.text(point.longitude + 0.05, point.latitude + 0.05, point.name, fontsize=8, zorder=3)
+
+            # Plot all segments in gray
+            for seg in G.nav_segments:
+                origin = next(p for p in G.nav_points if p.number == seg.origin_number)
+                dest = next(p for p in G.nav_points if p.number == seg.destination_number)
+                ax.plot([origin.longitude, dest.longitude],
+                        [origin.latitude, dest.latitude],
+                        'gray', linewidth=1, zorder=1)
+
+            # Highlight path points
+            path_points = []
+            for point_name in path_data['path']:
+                point = next(p for p in G.nav_points if p.name == point_name)
+                path_points.append(point)
+
+            if path_points:
+                # Origin point (blue)
+                ax.plot(path_points[0].longitude, path_points[0].latitude, 'bo', markersize=6, zorder=4)
+
+                # Destination point (red)
+                ax.plot(path_points[-1].longitude, path_points[-1].latitude, 'ro', markersize=6, zorder=4)
+
+                # Intermediate points (green)
+                for point in path_points[1:-1]:
+                    ax.plot(point.longitude, point.latitude, 'go', markersize=6, zorder=4)
+
+            # Highlight path segments in red
+            for seg in path_data['segments']:
+                origin = next(p for p in G.nav_points if p.number == seg.origin_number)
+                dest = next(p for p in G.nav_points if p.number == seg.destination_number)
+                ax.plot([origin.longitude, dest.longitude],
+                        [origin.latitude, dest.latitude],
+                        'r-', linewidth=2, zorder=3)
+
+                # Add distance label
+                ax.text((origin.longitude + dest.longitude) / 2,
+                        (origin.latitude + dest.latitude) / 2,
+                        f"{seg.distance:.1f}", fontsize=8, zorder=5)
+
+        else:  # Original graph path
+            # Plot all nodes in gray
+            for node in G.nodes:
+                ax.plot(node.x, node.y, 'o', color='gray', markersize=8, zorder=2)
+                ax.text(node.x, node.y, node.name, fontsize=10, zorder=3)
+
+            # Plot all segments in gray
+            for seg in G.segments:
+                ax.plot([seg.origin.x, seg.destination.x],
+                        [seg.origin.y, seg.destination.y],
+                        'gray', linewidth=1, zorder=1)
+
+            # Highlight path nodes
+            path_nodes = path_data.nodes
+            if path_nodes:
+                # Origin node (blue)
+                ax.plot(path_nodes[0].x, path_nodes[0].y, 'bo', markersize=10, zorder=4)
+
+                # Destination node (red)
+                ax.plot(path_nodes[-1].x, path_nodes[-1].y, 'ro', markersize=10, zorder=4)
+
+                # Intermediate nodes (green)
+                for node in path_nodes[1:-1]:
+                    ax.plot(node.x, node.y, 'go', markersize=10, zorder=4)
+
+            # Highlight path segments in red
+            for seg in path_data.segments:
+                ax.plot([seg.origin.x, seg.destination.x],
+                        [seg.origin.y, seg.destination.y],
+                        'r-', linewidth=2, zorder=3)
+
+                # Add cost label
+                ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
+                        (seg.origin.y + seg.destination.y) / 2 + 0.2,
+                        f"{seg.cost:.2f}", fontsize=8, zorder=5)
+
+        canvas.draw()
 
     def search_closest_path(event=None):
-        """Guarda la información introducida en las entradas anteriores"""
-        global G  # Use the current graph
         node_from = e_path_from.get().strip()
         node_to = e_path_to.get().strip()
-        from_node = SearchNode(G, node_from)
-        to_node = SearchNode(G, node_to)
-        if not from_node:
-            show_message(f"Node '{node_from}' doesn't exist", is_error=True)
-            e_path_from.delete(0, 'end')
-            return
-        if not to_node:
-            show_message(f"Node '{node_to}' doesn't exist", is_error=True)
-            e_path_to.delete(0, 'end')
-            return
-        path_obj = finding_shortest_path(G, from_node, to_node)  # Pass the current graph
-        if path_obj:
-            path_names = " → ".join([node.name for node in path_obj.nodes])
-            highlight_path(path_obj)
-            show_message(f"Shortest path from {node_from} to {node_to}: {path_names} (Distance: {path_obj.cost:.2f})")
+
+        if is_real_map(G):
+            # AirSpace handling
+            from_point = next((p for p in G.nav_points if p['name'] == node_from), None)
+            to_point = next((p for p in G.nav_points if p['name'] == node_to), None)
+
+            if not from_point or not to_point:
+                show_message(f"One or both nodes not found", is_error=True)
+                return
+
+            # Create consistent node objects
+            from_node = SimpleNamespace(name=from_point['name'],
+                                        x=from_point['lon'],
+                                        y=from_point['lat'])
+            to_node = SimpleNamespace(name=to_point['name'],
+                                      x=to_point['lon'],
+                                      y=to_point['lat'])
+
+            path_data = finding_shortest_path(G, from_node, to_node)
         else:
-            show_message(f"No path exists from {node_from} to {node_to}", is_error=True)
-        e_path_to.delete(0, 'end')
-        e_path_from.delete(0, 'end')
-    path_shortest = [e_path_from, e_path_to]
-    work_with_entry(path_shortest, search_closest_path)
+            # Original graph handling
+            from_node = SearchNode(G, node_from)
+            to_node = SearchNode(G, node_to)
+            if not from_node or not to_node:
+                show_message(f"One or both nodes not found", is_error=True)
+                return
+            path_data = finding_shortest_path(G, from_node, to_node)
+
+        if path_data:
+            highlight_path(path_data)
+            show_message(f"Path found with distance: {path_data['distance']:.2f}")
+        else:
+            show_message(f"No path exists between {node_from} and {node_to}", is_error=True)
     search_btn = tk.Button(
         root,
-        text='Find closest path',
+        text='Find Path',
         command=search_closest_path,
         cursor='hand2')
     search_btn.grid(row=4, column=3)
-
+    work_with_entry([e_path_from, e_path_to], search_closest_path)
 
 def show_paths():
     """Muestra todos los posibles caminos de un nodo establecido"""
     global G  # Make sure we're using the current graph
-
     for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) not in (1, 5):
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_paths = tk.Entry(root)

@@ -1,44 +1,52 @@
-from navPoint import *
 from navAirpoint import *
 from navSegment import *
 
 class AirSpace:
     def __init__(self):
         self.nav_points = []
-        self.nav_segments = []
         self.nav_airports = []
+        self.nav_segments = []
+        self.is_real_map = False  # Flag to identify real maps
 
+    def load_real_map(self, region):
+        self.is_real_map = True
+        standard_regions = {'Catalunya': 'Cat', 'España': 'Spain', 'Europa': 'ECAC'}
 
-def get_node_by_name(airspace: AirSpace, name: str) -> NavPoint:
-    """Find a NavPoint by name in the AirSpace"""
-    for point in airspace.nav_points:
-        if point.name == name:
-            return point
-    return None
+        if region not in standard_regions:
+            raise ValueError(f"Unknown region: {region}")
 
+        prefix = standard_regions[region]
 
-def get_segment_between(airspace: AirSpace, origin_name: str, destination_name: str) -> NavSegment:
-    """Find a NavSegment between two named points"""
-    origin = get_node_by_name(airspace, origin_name)
-    destination = get_node_by_name(airspace, destination_name)
+        # Load navigation points
+        with open(f'{prefix}_nav.txt', 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 4:
+                    self.nav_points.append({
+                        'id': parts[0],
+                        'name': parts[1],
+                        'lat': float(parts[2]),
+                        'lon': float(parts[3])
+                    })
 
-    if origin and destination:
-        for segment in airspace.nav_segments:
-            if segment.origin_number == origin.number and segment.destination_number == destination.number:
-                return segment
-    return None
+        # Load airports
+        with open(f'{prefix}_aer.txt', 'r') as f:
+            for line in f:
+                name = line.strip()
+                if name:
+                    self.nav_airports.append(name)
 
+        # Load segments
+        with open(f'{prefix}_seg.txt', 'r') as f:
+            for line in f:
+                parts = line.strip().split()
+                if len(parts) >= 3:
+                    self.nav_segments.append({
+                        'origin_id': parts[0],
+                        'dest_id': parts[1],
+                        'distance': float(parts[2])
+                    })
+        return self
 
-def get_neighbors(airspace: AirSpace, point_name: str) -> list:
-    """Get all neighbors of a NavPoint"""
-    point = get_node_by_name(airspace, point_name)
-    if not point:
-        return []
-
-    neighbors = []
-    for segment in airspace.nav_segments:
-        if segment.origin_number == point.number:
-            dest_point = next((p for p in airspace.nav_points if p.number == segment.destination_number), None)
-            if dest_point:
-                neighbors.append(dest_point)
-    return neighbors
+def is_real_map(graph):
+    return hasattr(graph, 'is_real_map') and graph.is_real_map

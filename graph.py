@@ -1,6 +1,20 @@
 from segment import *
 import matplotlib.pyplot as p
+from airSpace import *
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from types import SimpleNamespace
 
+root = tk.Tk()
+root.title("Airspace Visualization")
+message_label = None
+clear_timer = None
+error_window = None
+fig = Figure(figsize=(8.5, 7), dpi=100)
+ax = fig.add_subplot(111)
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
 class Graph:
     def __init__(self):
@@ -22,17 +36,23 @@ def AddNode(g,n):
         b = False
     return b
 
-def SearchNode(g,name):
+def SearchNode(g, name):
     '''
     Esta función busca un nodo en el grafo y retorna el node si lo encuentra y
     None si no lo encuentra
     '''
-    b=True
-    for n in g.nodes:
-        if n.name == name:
-            b=False
-            return n
-    if b:
+    if is_real_map(g):
+        # For real maps, search in nav_points
+        point = next((p for p in g.nav_points if p['name'] == name), None)
+        if point:
+            # Return a simple object with the required attributes
+            return SimpleNamespace(name=point['name'], x=point['lon'], y=point['lat'])
+        return None
+    else:
+        # Búsqueda de nodo original
+        for n in g.nodes:
+            if n.name == name:
+                return n
         return None
 
 def AddSegment(g, Vector:str, nOrigin, nDestination):
@@ -66,15 +86,26 @@ def GetClosest (g, x:float,y:float):
     '''
     Esta función encuentra el nodo más cercano a un punto y lo retorna
     '''
-    i=0
-    Dmin=Distance(Node("nxy",x,y),g.nodes[i])
-    Closestn = g.nodes[i]
-    while i<len(g.nodes):
-        if Dmin>Distance(Node("nxy",x,y), g.nodes[i]):
-            Dmin=Distance(Node("nxy",x,y), g.nodes[i])
-            Closestn=g.nodes[i]
-        i+=1
-    return Closestn
+    if is_real_map(g):
+        closest = None
+        min_dist = float('inf')
+        for point in g.nav_points:
+            dist = math.sqrt((x - float(point['lon'])) ** 2 + (y - float(point['lat'])) ** 2)
+            if dist < min_dist:
+                min_dist = dist
+                closest = point
+        return closest
+    else:
+        # Original implementation
+        i = 0
+        Dmin = Distance(Node("nxy", x, y), g.nodes[i])
+        Closestn = g.nodes[i]
+        while i < len(g.nodes):
+            if Dmin > Distance(Node("nxy", x, y), g.nodes[i]):
+                Dmin = Distance(Node("nxy", x, y), g.nodes[i])
+                Closestn = g.nodes[i]
+            i += 1
+        return Closestn
 
 def NodeConfig (g):
     '''Especificamos la configuración de los nodos mostrados en el gráfico'''
@@ -97,15 +128,189 @@ def SegmentConfig(g, color: str):
                (s.origin.y + s.destination.y) / 2 + 0.2,
                cost_text, zorder=3, color='black', fontsize=8)
 
+def create_message_area():
+    """Crea un mensaje que se muestre al final de la GUI"""
+    global message_label
+    message_frame = tk.Frame(root)
+    message_frame.grid(row=20, column=1, columnspan=5, sticky="ew", padx=10, pady=5)
+    message_label = tk.Label(
+        message_frame,
+        text="",
+        fg="black",
+        wraplength=1000,
+        justify="left",
+        anchor="w")
+    message_label.pack(fill="x", expand=True)
+
+def show_message(message, is_error=False, persistent=False):
+    """Mostramos cierto mensaje en la GUI del área de mensaje creada antes"""
+    global message_label
+    if message_label is None:
+        create_message_area()
+
+    def show_modern_error(title, message, code=None):
+        '''Ajustes del mensaje de error que mostraremos en pantalla
+        cuando algo falle, ya sea por no haber rellenado todas las entradas
+        de cierta función o por haberlas rellenado de manera indebida'''
+        global error_window
+        if error_window is not None and error_window.winfo_exists():
+            error_window.destroy()
+        error_window = tk.Toplevel(root)
+        error_window.title(title)
+        error_window.resizable(False, False)
+        window_width = 500
+        window_height = 180
+        screen_width = error_window.winfo_screenwidth()
+        screen_height = error_window.winfo_screenheight()
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        error_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        error_window.configure(bg='#2c2c2c')
+        error_window.attributes('-alpha', 0.98)
+        header_frame = tk.Frame(error_window, bg='#1e1e1e', height=25)
+        header_frame.pack(fill='x')
+        for color in ['#ff5f57', '#ffbd2e', '#28c840']:
+            tk.Canvas(header_frame, width=12, height=12, bg=color, bd=0, relief='flat').pack(side='left', padx=5,
+                                                                                             pady=6)
+        content_frame = tk.Frame(error_window, bg='#2c2c2c')
+        content_frame.pack(expand=True, fill='both', padx=20, pady=10)
+        icon_canvas = tk.Canvas(content_frame, width=60, height=60, bg='#2c2c2c', highlightthickness=0)
+        icon_canvas.create_polygon(30, 5, 55, 20, 55, 45, 30, 60, 5, 45, 5, 20, fill='#e74c3c')
+        icon_canvas.create_text(30, 32, text='!', font=("Segoe UI", 22, 'bold'), fill='white')
+        icon_canvas.grid(row=0, column=0, padx=10)
+        tk.Label(
+            content_frame,
+            text=message,
+            font=("Segoe UI", 12),
+            bg='#2c2c2c',
+            fg='white',
+            wraplength=380,
+            justify='left').grid(row=0, column=1, padx=10)
+        button_frame = tk.Frame(error_window, bg='#2c2c2c')
+        button_frame.pack(fill='x', pady=(10, 0))
+        ok_btn = tk.Button(
+            button_frame,
+            text="OK",
+            command=error_window.destroy,
+            bg='#007bff',
+            fg='white',
+            activebackground='#0056b3',
+            font=("Segoe UI", 10, 'bold'),
+            width=8,
+            relief='flat',
+            bd=0)
+        ok_btn.pack(side='right', padx=20)
+        error_window.grab_set()
+        error_window.transient(root)
+
+    def clear_message(delay=0):
+        """Borramos el mensaje después de un delay"""
+
+        def clear():
+            message_label.config(text="")
+
+        global clear_timer
+        if clear_timer:
+            root.after_cancel(clear_timer)
+        if delay > 0:
+            clear_timer = root.after(int(delay * 1000), lambda: message_label.config(text=""))
+        else:
+            clear()
+    clear_message()
+    if is_error:
+        formatted_message = f"Error: {message}"
+        message_label.config(fg="red")
+        show_modern_error("Error", message)
+    else:
+        formatted_message = message
+        message_label.config(fg="black")
+    message_label.config(text=formatted_message)
+    message_label.update_idletasks()
+    if not persistent:
+        if is_error:
+            clear_message(delay=5)
+
 def Plot(g):
-    '''Fabricamos el gráfico que mostrará todos nuestros datos'''
-    #Muestra todos los nodos y los segmentos y su coste
-    NodeConfig(g)
-    SegmentConfig(g,"#979797")
+    global fig, ax, canvas
+
+    # Initialize figure if it doesn't exist
+    if 'fig' not in globals():
+        fig = Figure(figsize=(8.5, 7), dpi=100)
+        ax = fig.add_subplot(111)
+        canvas = FigureCanvasTkAgg(fig, master=root)
+        canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+    else:
+        ax.clear()
+
+    if is_real_map(g):
+        # Plot real map (AirSpace)
+        ax.set_title(f"Airspace Map")
+
+        # Plot navigation points
+        for point in g.nav_points:
+            ax.plot(point['lon'], point['lat'], 'ro', markersize=4)
+            ax.text(point['lon'] + 0.05, point['lat'] + 0.05, point['name'], fontsize=8)
+
+        # Highlight airports
+        for airport in g.nav_airports:
+            point = next((p for p in g.nav_points if p['name'] == airport), None)
+            if point:
+                ax.plot(point['lon'], point['lat'], 'gD', markersize=6)
+
+        # Plot segments
+        for seg in g.nav_segments:
+            origin = next((p for p in g.nav_points if p['id'] == seg['origin_id']), None)
+            dest = next((p for p in g.nav_points if p['id'] == seg['dest_id']), None)
+            if origin and dest:
+                ax.plot([origin['lon'], dest['lon']],
+                        [origin['lat'], dest['lat']],
+                        'b-', linewidth=1)
+                # Add distance label
+                ax.text((origin['lon'] + dest['lon']) / 2,
+                        (origin['lat'] + dest['lat']) / 2,
+                        f"{seg['distance']:.1f}", fontsize=8)
+    else:
+        # Plot regular graph
+        NodeConfig(g)
+        SegmentConfig(g, "#979797")
+
+    # Common plot settings
+    ax.grid(color="#717171", linestyle="--")
+    ax.set_xlabel("Longitude")
+    ax.set_ylabel("Latitude")
+
+    # Update canvas
+    canvas.draw()
+
+def PlotRealMap(g):
+    # Plot navPoints
+    for point in g.nav_points:
+        p.plot(point['lon'], point['lat'], "ro", markersize=4)
+        p.text(point['lon'] + 0.05, point['lat'] - 0.05, point['name'], fontsize=8)
+
+    # Plot navAirports with different markers
+    for airport in g.nav_airports:
+        point = next((p for p in g.nav_points if p['name'] == airport), None)
+        if point:
+            p.plot(point['lon'], point['lat'], "gD", markersize=6)
+
+    # Plot navSegments
+    for seg in g.nav_segments:
+        origin = next((p for p in g.nav_points if p['id'] == seg['origin_id']), None)
+        dest = next((p for p in g.nav_points if p['id'] == seg['dest_id']), None)
+        if origin and dest:
+            p.plot([origin['lon'], dest['lon']],
+                   [origin['lat'], dest['lat']],
+                   "b-", linewidth=1)
+            # Add distance label
+            p.text((origin['lon'] + dest['lon']) / 2,
+                   (origin['lat'] + dest['lat']) / 2,
+                   f"{seg['distance']:.1f}", fontsize=8)
 
     p.grid(color="#717171", linestyle="--")
-    p.xlabel("x")
-    p.ylabel("y")
+    p.xlabel("Longitude")
+    p.ylabel("Latitude")
+    p.title("Airspace Map")
     p.show()
 
 def PlotNode(g, Norigin):
@@ -159,93 +364,56 @@ def read_file(Nfile: str):
                 AddSegment(G, name, n1, n2)
     return G
 
-def read_map_file(region: str):
-    standard_regions = {'Catalunya': 'Cat', 'España': 'Spain', 'Europa': 'ECAC'}
-    if region in standard_regions:
-        prefix = standard_regions[region]
-        try:
-            id_to_name = {}
-            name_to_node = {}
-            with open(f'{prefix}_nav.txt', 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) >= 4:
-                        node_id, name, lat, lon = parts[:4]
-                        id_to_name[node_id] = name
-            airport_nodes = set()
-            with open(f'{prefix}_aer.txt', 'r') as f:
-                for line in f:
-                    name = line.strip()
-                    if name:
-                        airport_nodes.add(name)
-            G = Graph()
-            with open(f'{prefix}_nav.txt', 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) >= 4:
-                        node_id, name, lat, lon = parts[:4]
-                        node = Node(name, float(lon), float(lat))
-                        AddNode(G, node)
-                        name_to_node[name] = node
-            successful = 0
-            with open(f'{prefix}_seg.txt', 'r') as f:
-                for line in f:
-                    parts = line.strip().split()
-                    if len(parts) >= 3:
-                        origin_id, dest_id, distance = parts[:3]
-                        origin_name = id_to_name.get(origin_id)
-                        dest_name = id_to_name.get(dest_id)
-                        if origin_name and dest_name:
-                            origin_node = name_to_node.get(origin_name)
-                            dest_node = name_to_node.get(dest_name)
-                            if origin_node and dest_node:
-                                seg_name = f"{origin_name}_{dest_name}"
-                                segment = Segment(seg_name, origin_node, dest_node)
-                                segment.cost = float(distance)
-                                G.segments.append(segment)
-                                AddNeighbor(origin_node, dest_node)
-                                successful += 1
-                            else:
-                                print(f"Node objects not found: {origin_name} -> {dest_name}")
-                        else:
-                            print(f"Names not found for IDs: {origin_id} -> {dest_id}")
-            print(f"Successfully connected {successful} segments")
-            return G
-        except Exception as e:
-            print(f"Error: {str(e)}")
-            return read_file(region)
-    else:
-        return read_file(region)
-
 def CreateNode(g,name,x,y):
     '''Esta función crea un node y lo añade a Node'''
     return AddNode(g,Node(name, x, y))
 
 def DeleteNode(g, node_name):
     '''Esta función elimina un nodo de nodos'''
-    node = SearchNode(g, node_name)
-    if node:
-        g.nodes.remove(node)
-        g.segments = [s for s in g.segments if s.origin != node and s.destination != node]
-        for n in g.nodes:
-            if node in n.neighbors:
-                n.neighbors.remove(node)
-                return True
-    else:
+    if is_real_map(g):
+        # For real maps, we can't actually delete nodes
+        show_message("Cannot delete nodes in real maps", is_error=True)
         return False
+    else:
+        node = SearchNode(g, node_name)
+        if node:
+            g.nodes.remove(node)
+            g.segments = [s for s in g.segments if s.origin != node and s.destination != node]
+            for n in g.nodes:
+                if node in n.neighbors:
+                    n.neighbors.remove(node)
+                    return True
+        else:
+            return False
+
 
 def DeleteSegment(graph, segment_name):
-    segment_to_delete = None
-    for seg in graph.segments:
-        if seg.name == segment_name:
-            segment_to_delete = seg
-            break
-    if segment_to_delete:
-        if segment_to_delete.destination in segment_to_delete.origin.neighbors:
-            segment_to_delete.origin.neighbors.remove(segment_to_delete.destination)
-        if segment_to_delete.origin in segment_to_delete.destination.neighbors:
-            segment_to_delete.destination.neighbors.remove(segment_to_delete.origin)
-        graph.segments.remove(segment_to_delete)
-        return True
-    return False
+    if is_real_map(graph):
+        # AirSpace version - segment_name should be in format "origin_destination"
+        try:
+            origin_name, dest_name = segment_name.split('_')
+            origin_id = next(p['id'] for p in graph.nav_points if p['name'] == origin_name)
+            dest_id = next(p['id'] for p in graph.nav_points if p['name'] == dest_name)
+
+            # Remove both directions if they exist
+            graph.nav_segments = [s for s in graph.nav_segments
+                                  if not ((s['origin_id'] == origin_id and s['dest_id'] == dest_id) or
+                                          (s['origin_id'] == dest_id and s['dest_id'] == origin_id))]
+            return True
+        except (ValueError, StopIteration):
+            return False
+    else:
+        segment_to_delete = None
+        for seg in graph.segments:
+            if seg.name == segment_name:
+                segment_to_delete = seg
+                break
+        if segment_to_delete:
+            if segment_to_delete.destination in segment_to_delete.origin.neighbors:
+                segment_to_delete.origin.neighbors.remove(segment_to_delete.destination)
+            if segment_to_delete.origin in segment_to_delete.destination.neighbors:
+                segment_to_delete.destination.neighbors.remove(segment_to_delete.origin)
+            graph.segments.remove(segment_to_delete)
+            return True
+        return False
 

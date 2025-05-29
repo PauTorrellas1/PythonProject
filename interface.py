@@ -44,9 +44,15 @@ def CreateGraph_1 ():
 
 
 def show_new_graph():
-    '''Shows graph with clean cost labels'''
     global fig, ax, canvas
-    ax.clear()
+
+    # Clear the existing plot instead of creating new figure
+    if 'ax' in globals():
+        ax.clear()
+    else:
+        fig = Figure(figsize=(8.5, 7), dpi=100)
+        ax = fig.add_subplot(111)
+
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
 
@@ -65,9 +71,10 @@ def show_new_graph():
     # Draw nodes
     for node in G.nodes:
         ax.plot(node.x, node.y, 'ko', markersize=3)
-        ax.text(node.x, node.y, node.name, fontsize=7, color= 'black')
+        ax.text(node.x, node.y, node.name, fontsize=7, color='black')
 
-    if canvas is None:
+    # Update the canvas instead of creating new one
+    if 'canvas' not in globals() or not canvas.get_tk_widget().winfo_exists():
         canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
     else:
@@ -115,9 +122,9 @@ def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
         pady=pady,
         width=width,
         wraplength=1000).grid(row=row, column=column)
+
 def label(text, row, column,master=root):
     tk.Label(master=master, text=text, padx=10,font=7).grid(row=row, column=column)
-
 
 def show_graph():
     '''Función que nos muestra el grafo original'''
@@ -198,6 +205,46 @@ def print_graph_info():
     close_button.pack(pady=10)
 
 
+def import_map():
+    for widget in root.winfo_children():
+        if widget.grid_info().get('column', 0) in [2, 3, 4]:
+            widget.destroy()
+
+    tk.Label(root, text="Real map to import:").grid(row=0, column=2)
+    e_map_name = tk.Entry(root)
+    e_map_name.grid(row=0, column=3)
+
+    def load_map(event=None):
+        region = e_map_name.get().strip()
+        try:
+            # Load the real map data
+            airspace = AirSpace().load_real_map(region)
+
+            # Update the global graph reference
+            global edited_G, G, current_display_mode
+            edited_G = airspace
+            G = edited_G
+            current_display_mode = "edited"
+            set_graph(G)
+
+            # Update the display
+            Plot(G)  # This will now handle real maps differently
+            show_message(f"Successfully loaded {region} map")
+
+            if e_map_name.winfo_exists():
+                e_map_name.delete(0, 'end')
+
+        except Exception as e:
+            show_message(f"Error loading map: {str(e)}", is_error=True)
+
+    e_map_name.bind('<Return>', load_map)
+    tk.Button(
+        root,
+        text="Import Map",
+        command=lambda: load_map(),
+        cursor='hand2'
+    ).grid(row=1, column=3)
+
 def show_neighbors():
     '''Esta función nos muestra a todos los vecinos de un nodo'''
     for widget in root.winfo_children():
@@ -206,12 +253,6 @@ def show_neighbors():
     tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
-
-    def search_and_clear(event=None):
-        '''Limpiamos la entrada de texto donde escribimos el nodoa estudiar'''
-        node_name = e_neighbor.get().strip()
-        highlight_neighbors(node_name)
-        e_neighbor.delete(0, 'end')
 
     def highlight_neighbors(node_name):
         '''Esta función resalta los vecinos de un nodo'''
@@ -225,51 +266,98 @@ def show_neighbors():
             show_message("Enter a node name", is_error=True)
             return
 
-        node = SearchNode(G, node_name)  # Use the current graph G
-        if not node:
-            show_message(f"Node '{node_name}' doesn't exist", is_error=True)
-            return
+        if is_real_map(G):
+            # Handle real map case
+            node_point = next((p for p in AirSpace.nav_points if p['name'] == node_name), None)
+            if not node_point:
+                show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+                return
 
-        if not node.neighbors:
-            show_message(f"Node '{node_name}' has no neighbors", is_error=True)
-            return
+            # Find all connected points
+            connected_points = []
+            for seg in AirSpace.nav_segments:
+                if seg['origin_id'] == node_point['id']:
+                    dest_point = next((p for p in AirSpace.nav_points if p['id'] == seg['dest_id']), None)
+                    if dest_point:
+                        connected_points.append(dest_point)
+                elif seg['dest_id'] == node_point['id']:
+                    origin_point = next((p for p in AirSpace.nav_points if p['id'] == seg['origin_id']), None)
+                    if origin_point:
+                        connected_points.append(origin_point)
 
-        # Draw all nodes first
-        for n in G.nodes:
-            color = 'gray'
-            if n == node:
-                color = 'blue'
-            elif n in node.neighbors:
-                color = 'green'
-            ax.plot(n.x, n.y, 'o', color=color, markersize=8)
-            ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
+            if not connected_points:
+                show_message(f"Node '{node_name}' has no neighbors", is_error=True)
+                return
 
-        # Draw connections to neighbors
-        for neighbor in node.neighbors:
-            seg = None
-            for s in G.segments:
-                if (s.origin == node and s.destination == neighbor) or (s.origin == neighbor and s.destination == node):
-                    seg = s
-                    break
+            # Draw all points first
+            for point in AirSpace.nav_points:
+                color = 'gray'
+                if point['name'] == node_name:
+                    color = 'blue'
+                elif point in connected_points:
+                    color = 'green'
+                ax.plot(point['lon'], point['lat'], 'o', color=color, markersize=8)
+                ax.text(point['lon'], point['lat'], point['name'], color='black', ha='left', va='bottom')
 
-            if seg:
-                dx = neighbor.x - node.x
-                dy = neighbor.y - node.y
-                length = math.sqrt(dx ** 2 + dy ** 2)
-                if length > 0:
-                    dx /= length
-                    dy /= length
-                    ax.arrow(node.x, node.y,
-                             dx * 0.95 * length, dy * 0.95 * length,
-                             head_width=0.5, head_length=0.5,
-                             fc='red', ec='red',
-                             length_includes_head=True)
+            # Draw connections to neighbors
+            for neighbor in connected_points:
+                ax.plot([node_point['lon'], neighbor['lon']],
+                        [node_point['lat'], neighbor['lat']],
+                        'r-', linewidth=2)
+
+        else:
+            # Original graph handling
+            node = SearchNode(G, node_name)
+            if not node:
+                show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+                return
+
+            if not node.neighbors:
+                show_message(f"Node '{node_name}' has no neighbors", is_error=True)
+                return
+
+            # Draw all nodes first
+            for n in G.nodes:
+                color = 'gray'
+                if n == node:
+                    color = 'blue'
+                elif n in node.neighbors:
+                    color = 'green'
+                ax.plot(n.x, n.y, 'o', color=color, markersize=8)
+                ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
+
+            # Draw connections to neighbors
+            for neighbor in node.neighbors:
+                seg = None
+                for s in G.segments:
+                    if (s.origin == node and s.destination == neighbor) or (
+                            s.origin == neighbor and s.destination == node):
+                        seg = s
+                        break
+
+                if seg:
+                    dx = neighbor.x - node.x
+                    dy = neighbor.y - node.y
+                    length = math.sqrt(dx ** 2 + dy ** 2)
+                    if length > 0:
+                        dx /= length
+                        dy /= length
+                        ax.arrow(node.x, node.y,
+                                 dx * 0.95 * length, dy * 0.95 * length,
+                                 head_width=0.5, head_length=0.5,
+                                 fc='red', ec='red',
+                                 length_includes_head=True)
 
         if 'canvas' in globals() and canvas:
             canvas.get_tk_widget().destroy()
         canvas = FigureCanvasTkAgg(fig, master=root)
         canvas.draw()
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
+
+    def search_and_clear(event=None):
+        node_name = e_neighbor.get().strip()
+        highlight_neighbors(node_name)
+        e_neighbor.delete(0, 'end')
 
     e_neighbor.bind('<Return>', search_and_clear)
     search_btn = tk.Button(
@@ -290,59 +378,61 @@ def create_new_graph():
     show_message("Created new empty graph")
 
 def confirm_new_graph():
-    """Muestra un aviso para confirmar que el usuario realmente quiere abrir el grafo,
-    y recomendarle que guarde la información si no desea perderla"""
+    """Esta función le recuerda al usuario que de continuar
+     perderá su antiguo gráfico"""
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Toplevel) and widget.title() == "Confirm":
+            widget.destroy()
     confirm_window = tk.Toplevel(root)
     confirm_window.title("Confirm")
     confirm_window.transient(root)
     confirm_window.grab_set()
     confirm_window.resizable(False, False)
-    window_width = 300
-    window_height = 150
+    window_width = 460
+    window_height = 180
     screen_width = confirm_window.winfo_screenwidth()
     screen_height = confirm_window.winfo_screenheight()
     x = (screen_width - window_width) // 2
     y = (screen_height - window_height) // 2
     confirm_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+    confirm_window.configure(bg="#FFC400")
+    content_frame = tk.Frame(confirm_window, bg="#FFC400")
+    content_frame.pack(padx=20, pady=15, fill="both", expand=True)
+    warning_icon = tk.Label(content_frame, text="⚠️", font=("Arial", 18), bg="#FFC400", fg="#172B4D")
+    warning_icon.grid(row=0, column=0, rowspan=2, sticky="n")
+    header = tk.Label(content_frame, text="Are you sure you want to create a new graph?",
+                      font=("Arial", 12, "bold"), bg="#FFC400", fg="#172B4D", anchor="w", justify="left")
+    header.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=(0, 5))
+    message = tk.Label(content_frame,
+                       text="All unsaved changes will be lost.\nWe recommend saving your previous graph first.",
+                       font=("Arial", 10), bg="#FFC400", fg="#172B4D", justify="left", anchor="w")
+    message.grid(row=1, column=1, sticky="w", padx=(10, 0))
+    button_frame = tk.Frame(confirm_window, bg="#FFC400")
+    button_frame.pack(pady=5)
 
     def on_yes_confirm():
         confirm_window.destroy()
         create_new_graph()
-    warning_text = tk.Text(confirm_window,
-                           height=3,
-                           wrap=tk.WORD,
-                           bg='white',
-                           fg='black',
-                           relief=tk.FLAT,
-                           font=('Arial', 10),
-                           padx=10,
-                           pady=5)
-    warning_text.insert(tk.END, "Are you sure you want to create a new graph?\n", 'black')
-    warning_text.insert(tk.END, "All unsaved changes will be lost.\n", 'red')
-    warning_text.insert(tk.END, "We recommend saving your previous graph first.", 'black')
-    warning_text.tag_config('black', foreground='black')
-    warning_text.tag_config('red', foreground='red')
-    warning_text.config(state=tk.DISABLED)
-    warning_text.pack(pady=10)
-    button_frame = tk.Frame(confirm_window)
-    button_frame.pack(pady=10)
-    tk.Button(button_frame,
-              text="Yes, continue",
-              command=on_yes_confirm,
-              width=12).pack(side=tk.LEFT, padx=10)
-    tk.Button(button_frame,
-              text="No, cancel",
-              command=confirm_window.destroy,
-              width=12).pack(side=tk.RIGHT, padx=10)
-    confirm_window.grab_set()
+    btn_style = {
+        "bg": "#F1B300",
+        "fg": "#172B4D",
+        "font": ("Arial", 10, "bold"),
+        "relief": tk.FLAT,
+        "activebackground": "#E0A000",
+        "padx": 10,
+        "pady": 5}
+    tk.Button(button_frame, text="Yes, continue", command=on_yes_confirm, **btn_style).pack(side=tk.RIGHT, padx=10)
+    tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
     confirm_window.wait_window()
 
+
 button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: show_graph_1, "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: create_new_graph(), "Crete new graph", 2, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: confirm_new_graph(), "Crete new graph", 2, 0, width=20,pady=10)#, master=plotting_frame)
 button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=10)#, master=plotting_frame)
 button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)#, master=plotting_frame)
 button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: import_map(), 'Import a real map', 6, 0, width=20,pady=10)
 
 def Entries():
     '''Cada una de las entradas de texto que usaremos en el menú principal
@@ -362,7 +452,7 @@ def Entries():
         global G, edited_G, current_display_mode
         filename = e_file.get()
         try:
-            new_graph = read_map_file(filename)
+            new_graph = read_file(filename)
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G
