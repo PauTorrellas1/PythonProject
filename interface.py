@@ -1,6 +1,5 @@
 from path import *
 from tkinter import filedialog
-from googleearth_exporting import *
 
 def CreateGraph_1 ():
     '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
@@ -524,6 +523,7 @@ def confirm_new_graph():
     tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
     confirm_window.wait_window()
 
+
 def export_to_kml(graph):
     filename = filedialog.asksaveasfilename(
         defaultextension=".kml",
@@ -539,65 +539,67 @@ def export_to_kml(graph):
     kml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-{content}
+    <name>Airspace Map</name>
+    <description>Generated airspace map</description>
+    {content}
 </Document>
 </kml>"""
 
     placemark_template = """<Placemark>
         <name>{name}</name>
         <Point>
-        <coordinates>{lon},{lat}</coordinates>
+            <coordinates>{lon},{lat},0</coordinates>
         </Point>
+        <Style>
+            <IconStyle>
+                <Icon>
+                    <href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
+                </Icon>
+            </IconStyle>
+        </Style>
+    </Placemark>"""
+
+    airport_template = """<Placemark>
+        <name>{name} Airport</name>
+        <Point>
+            <coordinates>{lon},{lat},0</coordinates>
+        </Point>
+        <Style>
+            <IconStyle>
+                <Icon>
+                    <href>http://maps.google.com/mapfiles/kml/pal3/icon54.png</href>
+                </Icon>
+            </IconStyle>
+        </Style>
     </Placemark>"""
 
     line_template = """<Placemark>
         <name>{name}</name>
         <LineString>
-        <altitudeMode>clampToGround</altitudeMode>
-        <extrude>1</extrude>
-        <tessellate>1</tessellate>
-        <coordinates>{coords}</coordinates>
+            <tessellate>1</tessellate>
+            <coordinates>{coords}</coordinates>
         </LineString>
+        <Style>
+            <LineStyle>
+                <color>ff0000ff</color>
+                <width>2</width>
+            </LineStyle>
+        </Style>
     </Placemark>"""
 
-    control_tower_template = """<Placemark>
-        <name>{name} Control Tower</name>
-        <Model>
-            <altitudeMode>relativeToGround</altitudeMode>
-            <Location>
-                <longitude>{lon}</longitude>
-                <latitude>{lat}</latitude>
-                <altitude>0</altitude>
-            </Location>
-            <Orientation>
-                <heading>0</heading>
-                <tilt>0</tilt>
-                <roll>0</roll>
-            </Orientation>
-            <Scale>
-                <x>20</x>
-                <y>20</y>
-                <z>20</z>
-            </Scale>
-            <Link>
-                <href>https://raw.githubusercontent.com/googlearchive/kml-samples/master/kml/Model/tower.dae</href>
-            </Link>
-        </Model>
+    path_line_template = """<Placemark>
+        <name>Path: {name}</name>
+        <LineString>
+            <tessellate>1</tessellate>
+            <coordinates>{coords}</coordinates>
+        </LineString>
+        <Style>
+            <LineStyle>
+                <color>ff00ff00</color>
+                <width>4</width>
+            </LineStyle>
+        </Style>
     </Placemark>"""
-
-    weather_radar_template = """<GroundOverlay>
-        <name>Weather Radar</name>
-        <Icon>
-            <href>https://www.example.com/path/to/radar/image.png</href>
-        </Icon>
-        <LatLonBox>
-            <north>{north}</north>
-            <south>{south}</south>
-            <east>{east}</east>
-            <west>{west}</west>
-            <rotation>0</rotation>
-        </LatLonBox>
-    </GroundOverlay>"""
 
     content = []
 
@@ -610,11 +612,11 @@ def export_to_kml(graph):
                 lat=point['lat']
             ))
 
-        # Add control towers for airports
+        # Add airports with different icons
         for airport in graph.nav_airports:
             point = next((p for p in graph.nav_points if p['name'] == airport), None)
             if point:
-                content.append(control_tower_template.format(
+                content.append(airport_template.format(
                     name=point['name'],
                     lon=point['lon'],
                     lat=point['lat']
@@ -628,20 +630,22 @@ def export_to_kml(graph):
             if origin and dest:
                 content.append(line_template.format(
                     name=f"{origin['name']} to {dest['name']}",
-                    coords=f"{origin['lon']},{origin['lat']} {dest['lon']},{dest['lat']}"
+                    coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"
                 ))
 
-        # Add weather radar if there are points
-        if graph.nav_points:
-            lats = [p['lat'] for p in graph.nav_points]
-            lons = [p['lon'] for p in graph.nav_points]
-            content.append(weather_radar_template.format(
-                north=max(lats) + 1,
-                south=min(lats) - 1,
-                east=max(lons) + 1,
-                west=min(lons) - 1
-            ))
+        # Add current path if exists
+        if hasattr(graph, 'current_path'):
+            path_coords = []
+            for point_name in graph.current_path['path']:
+                point = next((p for p in graph.nav_points if p['name'] == point_name), None)
+                if point:
+                    path_coords.append(f"{point['lon']},{point['lat']},0")
 
+            if len(path_coords) > 1:
+                content.append(path_line_template.format(
+                    name=f"{graph.current_path['path'][0]} to {graph.current_path['path'][-1]}",
+                    coords=" ".join(path_coords)
+                ))
     else:
         # Handle regular graph export
         for node in graph.nodes:
@@ -650,12 +654,23 @@ def export_to_kml(graph):
                 lon=node.x,
                 lat=node.y
             ))
-
         for seg in graph.segments:
             content.append(line_template.format(
                 name=seg.name,
-                coords=f"{seg.origin.x},{seg.origin.y} {seg.destination.x},{seg.destination.y}"
+                coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"
             ))
+
+        # Add current path if exists
+        if hasattr(graph, 'current_path'):
+            path_coords = []
+            for node in graph.current_path.nodes:
+                path_coords.append(f"{node.x},{node.y},0")
+
+            if len(path_coords) > 1:
+                content.append(path_line_template.format(
+                    name=f"{graph.current_path.origin.name} to {graph.current_path.destination.name}",
+                    coords=" ".join(path_coords)
+                ))
 
     try:
         with open(filename, 'w') as f:

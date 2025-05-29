@@ -249,6 +249,9 @@ def find_closest_path_entries():
         ax.clear()
 
         if isinstance(path_data, dict):  # AirSpace path
+            # Store current path in graph object
+            G.current_path = path_data
+
             # Get all point names in the path for easy lookup
             path_point_names = set(path_data['path'])
 
@@ -268,10 +271,7 @@ def find_closest_path_entries():
                     color = 'gray'
                     markersize = 5
 
-                ax.plot(point['lon'], point['lat'], 'o',
-                        color=color,
-                        markersize=markersize,
-                        zorder=3)
+                ax.plot(point['lon'], point['lat'], marker=(3, 0, -45), color=color, markersize=markersize, zorder=3)
                 ax.text(point['lon'] + 0.05, point['lat'] + 0.05,
                         point['name'],
                         fontsize=8,
@@ -315,6 +315,9 @@ def find_closest_path_entries():
                         fontsize=8,
                         zorder=3)
         else:
+            # Store current path in graph object
+            G.current_path = path_data
+
             # Original graph path plotting (keep existing style)
             PlotPath(G, path_data)
 

@@ -232,6 +232,8 @@ def show_message(message, is_error=False, persistent=False):
         if is_error:
             clear_message(delay=5)
 
+
+# In Graph.py, modify the Plot function:
 def Plot(g):
     global fig, ax, canvas
 
@@ -248,12 +250,12 @@ def Plot(g):
         # Plot real map (AirSpace)
         ax.set_title(f"Airspace Map")
 
-        # Plot navigation points
+        # Plot navigation points with thumbtack icons
         for point in g.nav_points:
-            ax.plot(point['lon'], point['lat'], 'ro', markersize=4)
+            ax.plot(point['lon'], point['lat'], marker=(3, 0, -45), markersize=8, color='red')
             ax.text(point['lon'] + 0.05, point['lat'] + 0.05, point['name'], fontsize=8)
 
-        # Highlight airports
+        # Highlight airports with different markers
         for airport in g.nav_airports:
             point = next((p for p in g.nav_points if p['name'] == airport), None)
             if point:
@@ -272,8 +274,11 @@ def Plot(g):
                         (origin['lat'] + dest['lat']) / 2,
                         f"{seg['distance']:.1f}", fontsize=8)
     else:
-        # Plot regular graph
-        NodeConfig(g)
+        # Plot regular graph with thumbtack icons
+        for n in g.nodes:
+            ax.plot(n.x, n.y, marker=(3, 0, -45), markersize=8, color='red')
+            ax.text(n.x + 0.5, n.y - 0.5, n.name, fontweight='bold')
+
         SegmentConfig(g, "#979797")
 
     # Common plot settings
