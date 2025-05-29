@@ -8,10 +8,6 @@ import heapq, math
 
 
 root = tk.Tk()
-current_display_mode = "edited"
-message_label = None
-clear_timer = None
-error_window = None
 fig = Figure(figsize=(8.5, 7), dpi=100)
 ax = fig.add_subplot(111)
 canvas = FigureCanvasTkAgg(fig, master=root)
@@ -40,7 +36,7 @@ class Path:
         self.cumulative_costs = {origin: 0}  # Cumulative costs from origin to each node
 
     def AddNodeToPath(self, node: Node, segment: Segment):
-        '''Adds a node to the path with its connecting segment'''
+        '''Añade un nodo a la clase Path con su respectivo segmento'''
         if node not in self.nodes:
             self.nodes.append(node)
             self.segments.append(segment)

@@ -1,5 +1,233 @@
 from path import *
 
+import matplotlib.pyplot as plt
+from matplotlib.patches import Circle
+
+# Global variables for mouse interaction
+mouse_mode = "normal"  # Can be "add_node", "add_segment", "add_neighbor"
+drag_start_node = None
+selected_nodes = []  # For neighbor selection
+temp_line = None  # For visual feedback during dragging
+
+
+def set_mouse_mode(mode):
+    """Set the current mouse interaction mode"""
+    global mouse_mode, selected_nodes, drag_start_node
+    mouse_mode = mode
+    selected_nodes = []
+    drag_start_node = None
+
+    # Update the message to show current mode
+    mode_messages = {
+        "normal": "Normal mode - Click buttons to interact",
+        "add_node": "Click on empty space to add a node",
+        "add_segment": "Drag from one node to another to create a segment",
+        "add_neighbor": "Click two nodes to connect them as neighbors"
+    }
+    message(mode_messages.get(mode, "Unknown mode"))
+def find_node_at_position(x, y, tolerance=0.5):
+    """Find if there's a node at the given position within tolerance"""
+    global G
+    for node in G.nodes:
+        distance = math.sqrt((node.x - x) ** 2 + (node.y - y) ** 2)
+        if distance <= tolerance:
+            return node
+    return None
+def generate_unique_node_name():
+    """Generate a unique node name"""
+    global G
+    existing_names = {node.name for node in G.nodes}
+
+    # Try single letters first
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        if letter not in existing_names:
+            return letter
+
+    # Try double letters
+    for first in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        for second in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            name = first + second
+            if name not in existing_names:
+                return name
+
+    # Fallback to numbers
+    counter = 1
+    while f"N{counter}" in existing_names:
+        counter += 1
+    return f"N{counter}"
+def on_mouse_click(event):
+    """Handle mouse click events on the canvas"""
+    global mouse_mode, selected_nodes, drag_start_node, edited_G, G
+
+    if event.inaxes != ax:
+        return
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        return
+
+    clicked_node = find_node_at_position(x, y)
+
+    if mouse_mode == "add_node":
+        if not clicked_node:  # Only add node if clicking on empty space
+            node_name = generate_unique_node_name()
+            new_node = Node(node_name, round(x, 1), round(y, 1))
+            AddNode(edited_G, new_node)
+            G = edited_G  # Update current graph reference
+            show_graph_1()
+            message(f"Added node {node_name} at ({x:.1f}, {y:.1f})")
+        else:
+            message("Cannot add node - there's already a node at this position")
+
+    elif mouse_mode == "add_neighbor":
+        if clicked_node:
+            if clicked_node in selected_nodes:
+                selected_nodes.remove(clicked_node)
+                message(f"Deselected node {clicked_node.name}")
+            else:
+                selected_nodes.append(clicked_node)
+                message(f"Selected node {clicked_node.name}")
+
+            # Highlight selected nodes
+            highlight_selected_nodes()
+
+            if len(selected_nodes) == 2:
+                # Create segment between the two selected nodes
+                node1, node2 = selected_nodes
+                segment_name = f"{node1.name}{node2.name}"
+
+                # Check if segment already exists
+                segment_exists = any(
+                    (s.origin == node1 and s.destination == node2) or
+                    (s.origin == node2 and s.destination == node1)
+                    for s in edited_G.segments
+                )
+
+                if not segment_exists:
+                    AddSegment(edited_G, segment_name, node1.name, node2.name)
+                    G = edited_G
+                    show_graph_1()
+                    message(f"Added segment between {node1.name} and {node2.name}")
+                else:
+                    message(f"Segment between {node1.name} and {node2.name} already exists")
+
+                selected_nodes = []
+        else:
+            message("Click on nodes to select them for connection")
+def on_mouse_press(event):
+    """Handle mouse button press for drag operations"""
+    global mouse_mode, drag_start_node
+
+    if event.inaxes != ax or mouse_mode != "add_segment":
+        return
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        return
+
+    clicked_node = find_node_at_position(x, y)
+    if clicked_node:
+        drag_start_node = clicked_node
+        message(f"Drag from {clicked_node.name} to another node")
+def on_mouse_drag(event):
+    """Handle mouse drag for visual feedback"""
+    global mouse_mode, drag_start_node, temp_line, ax, canvas
+
+    if (event.inaxes != ax or mouse_mode != "add_segment" or
+            drag_start_node is None or event.xdata is None or event.ydata is None):
+        return
+
+    # Remove previous temporary line
+    if temp_line:
+        temp_line.remove()
+        temp_line = None
+
+    # Draw temporary line
+    temp_line, = ax.plot([drag_start_node.x, event.xdata],
+                         [drag_start_node.y, event.ydata],
+                         'r--', linewidth=2, alpha=0.7)
+    canvas.draw_idle()
+def on_mouse_release(event):
+    """Handle mouse button release to complete drag operations"""
+    global mouse_mode, drag_start_node, temp_line, edited_G, G
+
+    if (event.inaxes != ax or mouse_mode != "add_segment" or
+            drag_start_node is None):
+        return
+
+    # Remove temporary line
+    if temp_line:
+        temp_line.remove()
+        temp_line = None
+        canvas.draw_idle()
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        drag_start_node = None
+        return
+
+    end_node = find_node_at_position(x, y)
+
+    if end_node and end_node != drag_start_node:
+        segment_name = f"{drag_start_node.name}{end_node.name}"
+
+        # Check if segment already exists
+        segment_exists = any(
+            (s.origin == drag_start_node and s.destination == end_node) or
+            (s.origin == end_node and s.destination == drag_start_node)
+            for s in edited_G.segments
+        )
+
+        if not segment_exists:
+            AddSegment(edited_G, segment_name, drag_start_node.name, end_node.name)
+            G = edited_G
+            show_graph_1()
+            message(f"Added segment from {drag_start_node.name} to {end_node.name}")
+        else:
+            message(f"Segment between {drag_start_node.name} and {end_node.name} already exists")
+    else:
+        message("Drag to a different node to create a segment")
+
+    drag_start_node = None
+def highlight_selected_nodes():
+    """Highlight the currently selected nodes"""
+    global selected_nodes, ax, canvas
+
+    # Redraw the graph
+    show_graph_1()
+
+    # Highlight selected nodes with red circles
+    for node in selected_nodes:
+        circle = Circle((node.x, node.y), 0.3, color='red', fill=False, linewidth=3)
+        ax.add_patch(circle)
+
+    canvas.draw()
+def connect_mouse_events():
+    """Connect mouse event handlers to the canvas"""
+    global canvas
+
+    canvas.mpl_connect('button_press_event', on_mouse_click)
+    canvas.mpl_connect('button_press_event', on_mouse_press)
+    canvas.mpl_connect('motion_notify_event', on_mouse_drag)
+    canvas.mpl_connect('button_release_event', on_mouse_release)
+
+
+# Modified show_graph_1 function to ensure mouse events are connected
+def show_graph_1():
+    '''Function that shows the edited graph with mouse interaction'''
+    global current_display_mode, G, canvas
+    current_display_mode = "edited"
+    G = edited_G
+    restore_main_view()
+    show_new_graph()
+    connect_mouse_events()  # Ensure mouse events are connected
+    message("Showing edited graph - Mouse interaction enabled")
+
+
+# Call connect_mouse_events after initial graph setup
+connect_mouse_events()
+
+
 def CreateGraph_1 ():
     '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
     G = Graph()
@@ -110,9 +338,7 @@ def not_valid():
 
 def show_graph():
     '''Función que nos muestra el grafo original'''
-    global current_display_mode, G
-    current_display_mode = "original"
-    G = original_G
+    CreateGraph_1 ()
     restore_main_view()
     show_new_graph()
     message("Showing original graph")
@@ -211,22 +437,17 @@ def show_neighbors():
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
         ax.set_axisbelow(True)
-
         node_name = node_name.strip()
         if not node_name:
             message("Enter a node name")
             return
-
-        node = SearchNode(G, node_name)  # Use the current graph G
+        node = SearchNode(G, node_name)
         if not node:
             not_valid(),message(f"Node '{node_name}' doesn't exist")
             return
-
         if not node.neighbors:
             not_valid(),message(f"Node '{node_name}' has no neighbors")
             return
-
-        # Draw all nodes first
         for n in G.nodes:
             color = 'gray'
             if n == node:
@@ -235,15 +456,12 @@ def show_neighbors():
                 color = 'green'
             ax.plot(n.x, n.y, 'o', color=color, markersize=8)
             ax.text(n.x, n.y, n.name, color='black', ha='left', va='bottom')
-
-        # Draw connections to neighbors
         for neighbor in node.neighbors:
             seg = None
             for s in G.segments:
                 if (s.origin == node and s.destination == neighbor) or (s.origin == neighbor and s.destination == node):
                     seg = s
                     break
-
             if seg:
                 dx = neighbor.x - node.x
                 dy = neighbor.y - node.y
@@ -352,73 +570,84 @@ def paths():
 
 
 def Entries():
-    """global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file"""# en ppi no cal
+    """Modified Entries function with mouse interaction buttons"""
+    global mouse_mode
+
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-    button(lambda: show_graph(), "Show original graph", 0, 0, width=20, pady=10)  # , master=plotting_frame)
-    button(lambda: show_graph_1, "Show edited graph", 1, 0, width=20, pady=10)  # , master=plotting_frame)
-    button(lambda: create_new_graph(), "Crete new graph", 2, 0, width=20, pady=10)  # , master=plotting_frame)
-    button(lambda: print_graph_info(), "Save the information", 3, 0, width=20, pady=10)  # , master=plotting_frame)
-    button(lambda: paths(), "Analyze paths", 4, 0, width=20, pady=10)  # , master=plotting_frame)
-    button(show_neighbors, "Show node neighbors", 5, 0, width=20, pady=10)  # , master=plotting_frame)
 
-    label("File Name",0, 2)
-    e_file = tk.Entry(root)  # Primer entry
-    e_file.grid(row=0, column=3,pady=10)
+    # Original buttons
+    button(lambda: show_graph(), "Show original graph", 0, 0, width=20, pady=10)
+    button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20, pady=10)
+    button(lambda: confirm_new_graph(), "Create new graph", 2, 0, width=20, pady=10)
+    button(lambda: print_graph_info(), "Save the information", 3, 0, width=20, pady=10)
+    button(lambda: paths(), "Analyze paths", 4, 0, width=20, pady=10)
+    button(show_neighbors, "Show node neighbors", 5, 0, width=20, pady=10)
+
+    # Mouse interaction mode buttons
+    button(lambda: set_mouse_mode("normal"), "Normal Mode", 6, 0, "lightblue", width=20, pady=5)
+    button(lambda: set_mouse_mode("add_node"), "Click to Add Node", 7, 0, "lightgreen", width=20, pady=5)
+    button(lambda: set_mouse_mode("add_segment"), "Drag to Add Segment", 8, 0, "yellow", width=20, pady=5)
+    button(lambda: set_mouse_mode("add_neighbor"), "Click Nodes to Connect", 9, 0, "orange", width=20, pady=5)
+
+    # Rest of the original Entries function code...
+    label("File Name", 0, 2)
+    e_file = tk.Entry(root)
+    e_file.grid(row=0, column=3, pady=10)
+
     def entry1(event=None):
-        '''Lee el texto de un documento determinado y nos muestra dicho gráfico'''
         global G, edited_G, current_display_mode
         try:
             new_graph = read_map_file(e_file.get())
             if new_graph.nodes:
                 edited_G = new_graph
                 G = edited_G
-                set_graph(G)  # Make sure to update the graph reference in path.py
+                set_graph(G)
                 current_display_mode = "edited"
                 show_graph_1()
                 message(f"Successfully loaded graph from {e_file.get()}")
                 e_file.delete(0, 'end')
             else:
-                not_valid(),message("No valid nodes found in file")
+                not_valid(), message("No valid nodes found in file")
                 e_file.delete(0, 'end')
         except FileNotFoundError:
-            not_valid(),message(f"File not found: {e_file.get()}")
+            not_valid(), message(f"File not found: {e_file.get()}")
             e_file.delete(0, 'end')
         except Exception as e:
-            not_valid(),message(f"Error loading file: {str(e)}")
-    button(entry1, "Entry", 1, 3,width=12)
+            not_valid(), message(f"Error loading file: {str(e)}")
 
+    button(entry1, "Entry", 1, 3, width=12)
+
+    # Node creation entries
     label("New node name", 2, 2)
-    e_name = tk.Entry(root)  # Nombre del nuevo nodo
-    e_name.grid(row=2, column=3,pady=10)
-    label("X",3,2)
-    e_x = tk.Entry(root)  # Valor X del nuevo nodo
-    e_x.grid(row=3, column=3,pady=10)
-    label("Y",4, 2)
-    e_y = tk.Entry(root)  # Valor Y del nuevo nodo
-    e_y.grid(row=4, column=3,pady=10)
+    e_name = tk.Entry(root)
+    e_name.grid(row=2, column=3, pady=10)
+    label("X", 3, 2)
+    e_x = tk.Entry(root)
+    e_x.grid(row=3, column=3, pady=10)
+    label("Y", 4, 2)
+    e_y = tk.Entry(root)
+    e_y.grid(row=4, column=3, pady=10)
+
     def add_node(event=None):
-        '''Añadimos un nodo al gráfico, marcando el nombre del nodo
-        y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
         global edited_G
         name = e_name.get().strip()
         x_str = e_x.get().strip()
         y_str = e_y.get().strip()
         if not name or not x_str or not y_str:
-            not_valid(),message("All the entries must be filled")
+            not_valid(), message("All the entries must be filled")
             return
         try:
             x = float(x_str)
             y = float(y_str)
         except ValueError:
-            not_valid(),message("The coordinates must be numbers, they can't be letters or weird symbols")
-            # Limpiamos las entradas de texto
+            not_valid(), message("The coordinates must be numbers, they can't be letters or weird symbols")
             e_x.delete(0, 'end')
             e_y.delete(0, 'end')
             return
         if SearchNode(edited_G, name):
-            not_valid(),message(f'The node "{name}" already exists')
+            not_valid(), message(f'The node "{name}" already exists')
             e_name.delete(0, 'end')
             return
         AddNode(edited_G, Node(name, x, y))
@@ -426,85 +655,84 @@ def Entries():
         e_name.delete(0, 'end')
         e_x.delete(0, 'end')
         e_y.delete(0, 'end')
-    button(add_node, "Add Node", 5, 3,width=12)
 
-    label("From",6,2)
-    e_from = tk.Entry(root)  # Nodo origen del nuevo segmento
-    e_from.grid(row=6, column=3,pady=10)
-    label("To",7,2)
-    e_to = tk.Entry(root) #Nodo destino del nuevo segmento
-    e_to.grid(row=7, column=3,pady=10)
+    button(add_node, "Add Node", 5, 3, width=12)
+
+    # Segment creation entries
+    label("From", 6, 2)
+    e_from = tk.Entry(root)
+    e_from.grid(row=6, column=3, pady=10)
+    label("To", 7, 2)
+    e_to = tk.Entry(root)
+    e_to.grid(row=7, column=3, pady=10)
+
     def add_segment(event=None):
-        '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
-        o creados con la función de AddNode'''
         global edited_G
-        e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
-        e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
+        e_name_from = e_from.get().strip()
+        e_name_to = e_to.get().strip()
         if not e_name_from or not e_name_to:
-            not_valid(),message("You must write both nodes first.")
+            not_valid(), message("You must write both nodes first.")
             return
         node_from = SearchNode(edited_G, e_name_from)
         node_to = SearchNode(edited_G, e_name_to)
         if not node_from:
-            not_valid(),message(f"The node '{e_name_from}' doesn't exist. Create it first.")
+            not_valid(), message(f"The node '{e_name_from}' doesn't exist. Create it first.")
             e_from.delete(0, 'end')
             return
         if not node_to:
-            not_valid(),message(f"The node '{e_name_to}' doesn't exist. Create it first.")
+            not_valid(), message(f"The node '{e_name_to}' doesn't exist. Create it first.")
             e_to.delete(0, 'end')
             return
         e_seg = f"{e_name_from}{e_name_to}"
-        #Creamos el nombre del segmento (vector)
-        #a partir del nodo destino del nodo final
-        #Creamos el otro vector (AB - BA)
+
         segment_exists = any(
             (s.name == e_seg)
             for s in edited_G.segments)
         if segment_exists:
-            not_valid(),message(f"It already exists a segment between {e_name_from} and {e_name_to}")
+            not_valid(), message(f"It already exists a segment between {e_name_from} and {e_name_to}")
             e_from.delete(0, 'end')
             e_to.delete(0, 'end')
             return
         AddSegment(edited_G, e_seg, e_name_from, e_name_to)
         e_from.delete(0, 'end')
         e_to.delete(0, 'end')
-        #Añadimos estos segmentos a nuestro gráfico y fuente de información
-        e_to.delete(0, 'end')
-        e_from.delete(0, 'end')
         show_graph_1()
-    button(add_segment, "Add Segment", 8, 3,width=12)
 
-    label("Delete Node",9,2)
-    e_delete_n = tk.Entry(root) #Nombre del nodo a borrar
-    e_delete_n.grid(row=9, column=3,pady=15)
+    button(add_segment, "Add Segment", 8, 3, width=12)
+
+    # Delete node entry
+    label("Delete Node", 9, 2)
+    e_delete_n = tk.Entry(root)
+    e_delete_n.grid(row=9, column=3, pady=15)
+
     def delete_node(event=None):
-        '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
         global edited_G
         node_name = e_delete_n.get().strip()
         if not node_name:
-            not_valid(),message("You must write the name of the node you want to delete.")
+            not_valid(), message("You must write the name of the node you want to delete.")
             e_delete_n.delete(0, 'end')
             return
         if not SearchNode(edited_G, node_name):
-            not_valid(),message(f"The node '{node_name}' doesn't exists.")
+            not_valid(), message(f"The node '{node_name}' doesn't exists.")
             e_delete_n.delete(0, 'end')
             return
         DeleteNode(edited_G, node_name)
         message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
         show_graph_1()
-    button(delete_node, "Delete Node", 10, 3,width=12)
 
-    label('Delete segment',11,2)
-    e_delete_s = tk.Entry(root) #Nombre del segmento a borrar
-    e_delete_s.grid(row=11, column=3,pady=15)
+    button(delete_node, "Delete Node", 10, 3, width=12)
+
+    # Delete segment entry
+    label('Delete segment', 11, 2)
+    e_delete_s = tk.Entry(root)
+    e_delete_s.grid(row=11, column=3, pady=15)
+
     def delete_segment(event=None):
-        '''La misma función que delete_node, solo que en lugar de eliminar
-        nodos esta función elimina segmentos'''
         global edited_G
         segment_name = e_delete_s.get().strip()
         if not segment_name:
-            not_valid(),message("You must write the name of the segment you want to delete.")
+            not_valid(), message("You must write the name of the segment you want to delete.")
             e_delete_s.delete(0, 'end')
             return
         segment_to_delete = None
@@ -513,15 +741,17 @@ def Entries():
                 segment_to_delete = seg
                 break
         if not segment_to_delete:
-            not_valid(),message(f"It doesn't exist any segment called '{segment_name}'")
+            not_valid(), message(f"It doesn't exist any segment called '{segment_name}'")
             e_delete_s.delete(0, 'end')
             return
         DeleteSegment(edited_G, segment_to_delete.name)
         message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         show_graph_1()
-    button(delete_segment, 'Delete Segment', 14, 3,width=12)
 
+    button(delete_segment, 'Delete Segment', 14, 3, width=12)
+
+    # Set up key bindings
     file_entries = [e_file]
     work_with_entry(file_entries, entry1)
     add_node_entries = [e_name, e_x, e_y]
@@ -534,7 +764,7 @@ def Entries():
     work_with_entry(delete_segment_entries, delete_segment)
 
     root.state('zoomed')
-    label("", 0, 4),label("", 0, 6)#serves as a separator for the graph
+    label("", 0, 4), label("", 0, 6)  # serves as a separator for the graph
 Entries()
 
 
