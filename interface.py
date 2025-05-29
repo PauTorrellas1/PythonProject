@@ -523,6 +523,13 @@ def confirm_new_graph():
     tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
     confirm_window.wait_window()
 
+def find_best_route():
+    '''Esta función permitirá escoger una ruta aérea entre dos aeropuertos
+    y mostrará la más corta'''
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+            widget.destroy()
+
 
 def export_to_kml(graph):
     filename = filedialog.asksaveasfilename(
@@ -687,6 +694,9 @@ button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "An
 button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
 button(lambda: import_map(), 'Import a real map', 6, 0, width=20,pady=10)
 button(lambda: export_to_kml(G), "Export to KML", 7, 0, width=20, pady=10)
+if is_real_map(G):
+    button(lambda: find_best_route(), 'Find the best route', 8, 0, width=20, pady=10)
+
 
 def Entries():
     '''Cada una de las entradas de texto que usaremos en el menú principal
