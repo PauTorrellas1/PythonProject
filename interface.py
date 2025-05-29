@@ -486,9 +486,6 @@ def find_best_route():
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-
-        show_message("This feature is only available for real maps", is_error=True)
-        return
     tk.Label(root, text="Departure Airport:").grid(row=0, column=2)
     departure_var = tk.StringVar(root)
     departure_var.set("Select Airport")
@@ -590,227 +587,176 @@ def find_best_route():
     ).grid(row=5, column=3)
 
 
-def export_to_kml(graph, show_all=False):
-    filename = filedialog.asksaveasfilename(
-        defaultextension=".kml",
-        filetypes=[("KML Files", "*.kml"), ("All Files", "*.*")],
-        title="Save KML File As",
-        initialfile="airspace_map.kml")
-    if not filename:
-        return
-    kml_template = """<?xml version="1.0" encoding="UTF-8"?>
+def export_to_kml(graph):
+   filename = filedialog.asksaveasfilename(
+       defaultextension=".kml",
+       filetypes=[("KML Files", "*.kml"), ("All Files", "*.*")],
+       title="Save KML File As",
+       initialfile="airspace_map.kml"
+   )
+
+
+   if not filename:
+       return
+
+
+   # Define all KML templates
+   kml_template = """<?xml version="1.0" encoding="UTF-8"?>
 <kml xmlns="http://www.opengis.net/kml/2.2">
 <Document>
-    <name>Airspace Map</name>
-    <description>Generated airspace map</description>
-    {content}
+   <name>Airspace Map</name>
+   <description>Generated airspace map</description>
+   {content}
 </Document>
 </kml>"""
 
-    placemark_template = """<Placemark>
-        <name>{name}</name>
-        <Point>
-            <coordinates>{lon},{lat},0</coordinates>
-        </Point>
-        <Style>
-            <IconStyle>
-                <Icon>
-                    <href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
-                </Icon>
-            </IconStyle>
-        </Style>
-    </Placemark>"""
 
-    airport_template = """<Placemark>
-        <name>{name} Airport</name>
-        <Point>
-            <coordinates>{lon},{lat},0</coordinates>
-        </Point>
-        <Style>
-            <IconStyle>
-                <Icon>
-                    <href>http://maps.google.com/mapfiles/kml/pal3/icon54.png</href>
-                </Icon>
-            </IconStyle>
-        </Style>
-    </Placemark>"""
+   placemark_template = """<Placemark>
+       <name>{name}</name>
+       <Point>
+           <coordinates>{lon},{lat},0</coordinates>
+       </Point>
+       <Style>
+           <IconStyle>
+               <Icon>
+                   <href>http://maps.google.com/mapfiles/kml/pushpin/red-pushpin.png</href>
+               </Icon>
+           </IconStyle>
+       </Style>
+   </Placemark>"""
 
-    line_template = """<Placemark>
-        <name>{name}</name>
-        <LineString>
-            <tessellate>1</tessellate>
-            <coordinates>{coords}</coordinates>
-        </LineString>
-        <Style>
-            <LineStyle>
-                <color>ff0000ff</color>
-                <width>2</width>
-            </LineStyle>
-        </Style>
-    </Placemark>"""
 
-    path_line_template = """<Placemark>
-        <name>Path: {name}</name>
-        <LineString>
-            <tessellate>1</tessellate>
-            <coordinates>{coords}</coordinates>
-        </LineString>
-        <Style>
-            <LineStyle>
-                <color>ff00ff00</color>
-                <width>4</width>
-            </LineStyle>
-        </Style>
-    </Placemark>"""
-    content = []
-    if is_real_map(graph):
-        if current_visualization_mode == "neighbors" and current_visualization_node:
-            node_point = next((p for p in graph.nav_points if p['name'] == current_visualization_node), None)
-            if node_point:
-                content.append(placemark_template.format(
-                    name=node_point['name'] + " (Center)",
-                    lon=node_point['lon'],
-                    lat=node_point['lat']))
-                connected_points = []
-                for seg in graph.nav_segments:
-                    if seg['origin_id'] == node_point['id']:
-                        dest_point = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
-                        if dest_point:
-                            connected_points.append(dest_point)
-                            content.append(placemark_template.format(
-                                name=dest_point['name'],
-                                lon=dest_point['lon'],
-                                lat=dest_point['lat']))
-                            content.append(line_template.format(
-                                name=f"{node_point['name']} to {dest_point['name']}",
-                                coords=f"{node_point['lon']},{node_point['lat']},0 {dest_point['lon']},{dest_point['lat']},0"))
-                    elif seg['dest_id'] == node_point['id']:
-                        origin_point = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
-                        if origin_point:
-                            connected_points.append(origin_point)
-                            content.append(placemark_template.format(
-                                name=origin_point['name'],
-                                lon=origin_point['lon'],
-                                lat=origin_point['lat']))
-                            content.append(line_template.format(
-                                name=f"{origin_point['name']} to {node_point['name']}",
-                                coords=f"{origin_point['lon']},{origin_point['lat']},0 {node_point['lon']},{node_point['lat']},0"))
-        elif current_visualization_mode == "paths" and current_visualization_node:
-            node_point = next((p for p in graph.nav_points if p['name'] == current_visualization_node), None)
-            if node_point:
-                visited = set()
-                path_segments = set()
-                queue = [node_point['id']]
-                visited.add(node_point['id'])
-                while queue:
-                    current_id = queue.pop(0)
-                    current_node = next((p for p in graph.nav_points if p['id'] == current_id), None)
-                    if not current_node:
-                        continue
-                    for seg in [s for s in graph.nav_segments if s['origin_id'] == current_id]:
-                        neighbor_id = seg['dest_id']
-                        neighbor = next((p for p in graph.nav_points if p['id'] == neighbor_id), None)
-                        if neighbor and neighbor_id not in visited:
-                            path_segments.add((current_id, neighbor_id))
-                            visited.add(neighbor_id)
-                            queue.append(neighbor_id)
-                for point in graph.nav_points:
-                    if point['id'] in visited:
-                        if point['id'] == node_point['id']:
-                            # Main node
-                            content.append(placemark_template.format(
-                                name=point['name'] + " (Origin)",
-                                lon=point['lon'],
-                                lat=point['lat']))
-                        else:
-                            content.append(placemark_template.format(
-                                name=point['name'],
-                                lon=point['lon'],
-                                lat=point['lat']))
-                for seg in graph.nav_segments:
-                    if (seg['origin_id'], seg['dest_id']) in path_segments:
-                        origin = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
-                        dest = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
-                        if origin and dest:
-                            content.append(line_template.format(
-                                name=f"{origin['name']} to {dest['name']}",
-                                coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"))
-        else:
-            for point in graph.nav_points:
-                content.append(placemark_template.format(
-                    name=point['name'],
-                    lon=point['lon'],
-                    lat=point['lat']))
-            for seg in graph.nav_segments:
-                origin = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
-                dest = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
-                if origin and dest:
-                    content.append(line_template.format(
-                        name=f"{origin['name']} to {dest['name']}",
-                        coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"))
-    else:
-        if current_visualization_mode == "neighbors" and current_visualization_node:
-            node = SearchNode(graph, current_visualization_node)
-            if node:
-                content.append(placemark_template.format(
-                    name=node.name + " (Center)",
-                    lon=node.x,
-                    lat=node.y))
-                for neighbor in node.neighbors:
-                    content.append(placemark_template.format(
-                        name=neighbor.name,
-                        lon=neighbor.x,
-                        lat=neighbor.y))
-                    content.append(line_template.format(
-                        name=f"{node.name} to {neighbor.name}",
-                        coords=f"{node.x},{node.y},0 {neighbor.x},{neighbor.y},0"))
-        elif current_visualization_mode == "paths" and current_visualization_node:
-            node = SearchNode(graph, current_visualization_node)
-            if node:
-                visited = set()
-                path_segments = set()
-                queue = [node]
-                visited.add(node.name)
-                while queue:
-                    current_node = queue.pop(0)
-                    for seg in [s for s in graph.segments if s.origin == current_node]:
-                        neighbor = seg.destination
-                        if neighbor.name not in visited:
-                            path_segments.add(seg)
-                            visited.add(neighbor.name)
-                            queue.append(neighbor)
-                for n in graph.nodes:
-                    if n.name in visited:
-                        if n == node:
-                            content.append(placemark_template.format(
-                                name=n.name + " (Origin)",
-                                lon=n.x,
-                                lat=n.y))
-                        else:
-                            content.append(placemark_template.format(
-                                name=n.name,
-                                lon=n.x,
-                                lat=n.y))
-                for seg in path_segments:
-                    content.append(line_template.format(
-                        name=seg.name,
-                        coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"))
-        else:
-            for node in graph.nodes:
-                content.append(placemark_template.format(
-                    name=node.name,
-                    lon=node.x,
-                    lat=node.y))
-            for seg in graph.segments:
-                content.append(line_template.format(
-                    name=seg.name,
-                    coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"))
-    try:
-        with open(filename, 'w', encoding='utf-8') as f:
-            f.write(kml_template.format(content='\n'.join(content)))
-        show_message(f"Successfully exported to {filename}")
-    except Exception as e:
-        show_message(f"Error saving file: {str(e)}", is_error=True)
+   airport_template = """<Placemark>
+       <name>{name} Airport</name>
+       <Point>
+           <coordinates>{lon},{lat},0</coordinates>
+       </Point>
+       <Style>
+           <IconStyle>
+               <Icon>
+                   <href>http://maps.google.com/mapfiles/kml/pal3/icon54.png</href>
+               </Icon>
+           </IconStyle>
+       </Style>
+   </Placemark>"""
+
+
+   line_template = """<Placemark>
+       <name>{name}</name>
+       <LineString>
+           <tessellate>1</tessellate>
+           <coordinates>{coords}</coordinates>
+       </LineString>
+       <Style>
+           <LineStyle>
+               <color>ff0000ff</color>
+               <width>2</width>
+           </LineStyle>
+       </Style>
+   </Placemark>"""
+
+
+   path_line_template = """<Placemark>
+       <name>Path: {name}</name>
+       <LineString>
+           <tessellate>1</tessellate>
+           <coordinates>{coords}</coordinates>
+       </LineString>
+       <Style>
+           <LineStyle>
+               <color>ff00ff00</color>
+               <width>4</width>
+           </LineStyle>
+       </Style>
+   </Placemark>"""
+
+
+   content = []
+
+
+   if is_real_map(graph):
+       # Add navigation points
+       for point in graph.nav_points:
+           content.append(placemark_template.format(
+               name=point['name'],
+               lon=point['lon'],
+               lat=point['lat']
+           ))
+
+
+       # Add airports with different icons
+       for airport in graph.nav_airports:
+           point = next((p for p in graph.nav_points if p['name'] == airport), None)
+           if point:
+               content.append(airport_template.format(
+                   name=point['name'],
+                   lon=point['lon'],
+                   lat=point['lat']
+               ))
+
+
+       # Add segments
+       for seg in graph.nav_segments:
+           origin = next((p for p in graph.nav_points if p['id'] == seg['origin_id']), None)
+           dest = next((p for p in graph.nav_points if p['id'] == seg['dest_id']), None)
+
+
+           if origin and dest:
+               content.append(line_template.format(
+                   name=f"{origin['name']} to {dest['name']}",
+                   coords=f"{origin['lon']},{origin['lat']},0 {dest['lon']},{dest['lat']},0"
+               ))
+
+
+       # Add current path if exists
+       if hasattr(graph, 'current_path'):
+           path_coords = []
+           for point_name in graph.current_path['path']:
+               point = next((p for p in graph.nav_points if p['name'] == point_name), None)
+               if point:
+                   path_coords.append(f"{point['lon']},{point['lat']},0")
+
+
+           if len(path_coords) > 1:
+               content.append(path_line_template.format(
+                   name=f"{graph.current_path['path'][0]} to {graph.current_path['path'][-1]}",
+                   coords=" ".join(path_coords)
+               ))
+   else:
+       # Handle regular graph export
+       for node in graph.nodes:
+           content.append(placemark_template.format(
+               name=node.name,
+               lon=node.x,
+               lat=node.y
+           ))
+       for seg in graph.segments:
+           content.append(line_template.format(
+               name=seg.name,
+               coords=f"{seg.origin.x},{seg.origin.y},0 {seg.destination.x},{seg.destination.y},0"
+           ))
+
+
+       # Add current path if exists
+       if hasattr(graph, 'current_path'):
+           path_coords = []
+           for node in graph.current_path.nodes:
+               path_coords.append(f"{node.x},{node.y},0")
+
+
+           if len(path_coords) > 1:
+               content.append(path_line_template.format(
+                   name=f"{graph.current_path.origin.name} to {graph.current_path.destination.name}",
+                   coords=" ".join(path_coords)
+               ))
+
+
+   try:
+       with open(filename, 'w') as f:
+           f.write(kml_template.format(content='\n'.join(content)))
+       show_message(f"Successfully exported to {filename}")
+   except Exception as e:
+       show_message(f"Error saving file: {str(e)}", is_error=True)
 
 button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)
 button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20,pady=10)
@@ -882,41 +828,39 @@ def Entries():
     e_to.grid(row=7, column=3,pady=10)
 
     def add_node(event=None):
+        '''Añadimos un nodo al gráfico'''
         global edited_G
         if is_real_map(edited_G):
-            show_message("Cannot add segments to real maps", is_error=True)
-            e_from.delete(0, 'end')
-            e_to.delete(0, 'end')
+            show_message("Cannot add nodes to real maps", is_error=True)
             return
-        e_name_from = e_from.get().strip()
-        e_name_to = e_to.get().strip()
-        if not e_name_from or not e_name_to:
-            show_message("You must write both nodes first.", is_error=True)
+
+        name = e_name.get().strip()
+        x_str = e_x.get().strip()
+        y_str = e_y.get().strip()
+
+        if not name or not x_str or not y_str:
+            show_message("All the entries must be filled", is_error=True)
             return
-        node_from = SearchNode(edited_G, e_name_from)
-        node_to = SearchNode(edited_G, e_name_to)
-        if not node_from:
-            show_message(f"The node '{e_name_from}' doesn't exists.", is_error=True)
-            e_from.delete(0, 'end')
+
+        try:
+            x = float(x_str)
+            y = float(y_str)
+        except ValueError:
+            show_message("The coordinates must be numbers", is_error=True)
+            e_x.delete(0, 'end')
+            e_y.delete(0, 'end')
             return
-        if not node_to:
-            show_message(f"The node '{e_name_to}' doesn't exists.", is_error=True)
-            e_to.delete(0, 'end')
+
+        if SearchNode(edited_G, name):
+            show_message(f'The node "{name}" already exists', is_error=True)
+            e_name.delete(0, 'end')
             return
-        e_seg = f"{e_name_from}{e_name_to}"
-        segment_exists = any(
-            (s.name == e_seg)
-            for s in edited_G.segments)
-        if segment_exists:
-            show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
-            e_from.delete(0, 'end')
-            e_to.delete(0, 'end')
-            return
-        AddSegment(edited_G, e_seg, e_name_from, e_name_to)
-        e_from.delete(0, 'end')
-        e_to.delete(0, 'end')
+
+        AddNode(edited_G, Node(name, x, y))
         show_graph_1()
-    button(add_node, "Add Node", 5, 3,width=12)
+        e_name.delete(0, 'end')
+        e_x.delete(0, 'end')
+        e_y.delete(0, 'end')
 
     def add_segment(event=None):
         '''Añadimos un segmento al gráfico'''
