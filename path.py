@@ -390,53 +390,96 @@ def show_paths():
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
         ax.set_axisbelow(True)
-        start_node = SearchNode(G, node_name)
-        if not start_node:
-            show_message(f"Node '{node_name}' doesn't exist", is_error=True)
-            return
-        visited = set()
-        path_segments = set()
-        queue = [start_node]
-        visited.add(start_node)
-        while queue:
-            current_node = queue.pop(0)
-            for seg in [s for s in G.segments if s.origin == current_node]:
-                neighbor = seg.destination
-                path_segments.add(seg)
-                if neighbor not in visited:
-                    visited.add(neighbor)
-                    queue.append(neighbor)
-        # Dibuja,os los nodos
-        for node in G.nodes:
-            color = 'gray'
-            if node == start_node:
-                color = 'red'
-            elif node in visited:
-                color = 'pink'
-            ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
-            ax.text(node.x, node.y, node.name,
-                    color='black', ha='left', va='bottom', zorder=4)
-        # Dibujamos los segmentos
-        for seg in G.segments:
-            dx = seg.destination.x - seg.origin.x
-            dy = seg.destination.y - seg.origin.y
-            length = math.sqrt(dx ** 2 + dy ** 2)
-            if length > 0:
-                dx /= length
-                dy /= length
-                if seg in path_segments:
-                    arrow_color = 'blue'
-                    z = 2
-                else:
-                    arrow_color = 'gray'
-                    z = 1
-                ax.arrow(seg.origin.x, seg.origin.y,
-                         dx * 0.95 * length, dy * 0.95 * length,
-                         head_width=0.1, head_length=0.3,
-                         fc=arrow_color, ec=arrow_color,
-                         length_includes_head=True,
-                         width=0.001,
-                         zorder=z)
+
+        if is_real_map(G):
+            # Handle AirSpace case
+            start_node = next((p for p in G.nav_points if p['name'] == node_name), None)
+            if not start_node:
+                show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+                return
+
+            visited = set()
+            path_segments = set()
+            queue = [start_node['id']]
+            visited.add(start_node['id'])
+
+            while queue:
+                current_id = queue.pop(0)
+                current_node = next((p for p in G.nav_points if p['id'] == current_id), None)
+                if not current_node:
+                    continue
+
+                for seg in [s for s in G.nav_segments if s['origin_id'] == current_id]:
+                    neighbor_id = seg['dest_id']
+                    neighbor = next((p for p in G.nav_points if p['id'] == neighbor_id), None)
+                    if neighbor and neighbor_id not in visited:
+                        path_segments.add((current_id, neighbor_id))
+                        visited.add(neighbor_id)
+                        queue.append(neighbor_id)
+
+            # Draw nodes
+            for point in G.nav_points:
+                color = 'gray'
+                if point['name'] == node_name:
+                    color = 'red'
+                elif point['id'] in visited:
+                    color = 'pink'
+                ax.plot(point['lon'], point['lat'], 'o', color=color, markersize=8, zorder=3)
+                ax.text(point['lon'], point['lat'], point['name'],
+                        color='black', ha='left', va='bottom', zorder=4)
+
+            # Draw segments
+            for seg in G.nav_segments:
+                origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
+                dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
+                if origin and dest:
+                    is_path_segment = (seg['origin_id'], seg['dest_id']) in path_segments
+                    color = 'blue' if is_path_segment else 'gray'
+                    z = 2 if is_path_segment else 1
+                    ax.plot([origin['lon'], dest['lon']],
+                            [origin['lat'], dest['lat']],
+                            color=color, linewidth=1.5, zorder=z)
+        else:
+            # Original graph handling
+            start_node = SearchNode(G, node_name)
+            if not start_node:
+                show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+                return
+
+            visited = set()
+            path_segments = set()
+            queue = [start_node]
+            visited.add(start_node.name)  # Use node name as hashable key
+
+            while queue:
+                current_node = queue.pop(0)
+                for seg in [s for s in G.segments if s.origin == current_node]:
+                    neighbor = seg.destination
+                    if neighbor.name not in visited:
+                        path_segments.add(seg)
+                        visited.add(neighbor.name)
+                        queue.append(neighbor)
+
+            # Draw nodes
+            for node in G.nodes:
+                color = 'gray'
+                if node == start_node:
+                    color = 'red'
+                elif node.name in visited:
+                    color = 'pink'
+                ax.plot(node.x, node.y, 'o', color=color, markersize=8, zorder=3)
+                ax.text(node.x, node.y, node.name,
+                        color='black', ha='left', va='bottom', zorder=4)
+
+            # Draw segments
+            for seg in G.segments:
+                is_path_segment = seg in path_segments
+                color = 'blue' if is_path_segment else 'gray'
+                z = 2 if is_path_segment else 1
+                ax.plot([seg.origin.x, seg.destination.x],
+                        [seg.origin.y, seg.destination.y],
+                        color=color, linewidth=1.5, zorder=z)
+
         if canvas:
             canvas.get_tk_widget().destroy()
         canvas = FigureCanvasTkAgg(fig, master=root)
