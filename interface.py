@@ -217,18 +217,19 @@ def import_map():
     def load_map(event=None):
         region = e_map_name.get().strip()
         try:
-            # Load the real map data
+            # Create and load the airspace
             airspace = AirSpace().load_real_map(region)
 
             # Update the global graph reference
-            global edited_G, G, current_display_mode
+            global edited_G, G, current_display_mode, airspace_instance
             edited_G = airspace
             G = edited_G
             current_display_mode = "edited"
+            airspace_instance = airspace  # Store the instance
             set_graph(G)
 
             # Update the display
-            Plot(G)  # This will now handle real maps differently
+            Plot(G)
             show_message(f"Successfully loaded {region} map")
 
             if e_map_name.winfo_exists():
@@ -255,7 +256,6 @@ def show_neighbors():
     e_neighbor.grid(row=0, column=3)
 
     def highlight_neighbors(node_name):
-        '''Esta función resalta los vecinos de un nodo'''
         global fig, ax, canvas, G
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5)
@@ -267,21 +267,21 @@ def show_neighbors():
             return
 
         if is_real_map(G):
-            # Handle real map case
-            node_point = next((p for p in AirSpace.nav_points if p['name'] == node_name), None)
+            # Handle real map case - use G (which is the AirSpace instance)
+            node_point = next((p for p in G.nav_points if p['name'] == node_name), None)
             if not node_point:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
                 return
 
             # Find all connected points
             connected_points = []
-            for seg in AirSpace.nav_segments:
+            for seg in G.nav_segments:
                 if seg['origin_id'] == node_point['id']:
-                    dest_point = next((p for p in AirSpace.nav_points if p['id'] == seg['dest_id']), None)
+                    dest_point = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
                     if dest_point:
                         connected_points.append(dest_point)
                 elif seg['dest_id'] == node_point['id']:
-                    origin_point = next((p for p in AirSpace.nav_points if p['id'] == seg['origin_id']), None)
+                    origin_point = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
                     if origin_point:
                         connected_points.append(origin_point)
 
@@ -290,7 +290,7 @@ def show_neighbors():
                 return
 
             # Draw all points first
-            for point in AirSpace.nav_points:
+            for point in G.nav_points:
                 color = 'gray'
                 if point['name'] == node_name:
                     color = 'blue'
@@ -304,9 +304,8 @@ def show_neighbors():
                 ax.plot([node_point['lon'], neighbor['lon']],
                         [node_point['lat'], neighbor['lat']],
                         'r-', linewidth=2)
-
         else:
-            # Original graph handling
+            # Original graph handling remains the same
             node = SearchNode(G, node_name)
             if not node:
                 show_message(f"Node '{node_name}' doesn't exist", is_error=True)
