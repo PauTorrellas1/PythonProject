@@ -56,22 +56,45 @@ def show_new_graph():
     ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
     ax.set_axisbelow(True)
 
-    # Draw segments and costs
-    for seg in G.segments:
-        ax.plot([seg.origin.x, seg.destination.x],
-                [seg.origin.y, seg.destination.y],
-                'blue', linewidth=1.5, zorder=1)
+    if is_real_map(G):
+        # Handle AirSpace map
+        # Draw navigation points
+        for point in G.nav_points:
+            ax.plot(point['lon'], point['lat'], 'ko', markersize=3)
+            ax.text(point['lon'], point['lat'], point['name'], fontsize=7, color='black')
 
-        # Cost label styling
-        ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
-                (seg.origin.y + seg.destination.y) / 2 + 0.2,
-                f"{seg.cost:.2f}",
-                color='black', fontsize=8, zorder=3)
+        # Draw segments
+        for seg in G.nav_segments:
+            origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
+            dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
+            if origin and dest:
+                ax.plot([origin['lon'], dest['lon']],
+                        [origin['lat'], dest['lat']],
+                        'blue', linewidth=1.5, zorder=1)
 
-    # Draw nodes
-    for node in G.nodes:
-        ax.plot(node.x, node.y, 'ko', markersize=3)
-        ax.text(node.x, node.y, node.name, fontsize=7, color='black')
+                # Cost label styling
+                ax.text((origin['lon'] + dest['lon']) / 2,
+                        (origin['lat'] + dest['lat']) / 2,
+                        f"{seg['distance']:.2f}",
+                        color='black', fontsize=8, zorder=3)
+    else:
+        # Handle regular graph
+        # Draw segments and costs
+        for seg in G.segments:
+            ax.plot([seg.origin.x, seg.destination.x],
+                    [seg.origin.y, seg.destination.y],
+                    'blue', linewidth=1.5, zorder=1)
+
+            # Cost label styling
+            ax.text((seg.origin.x + seg.destination.x) / 2 + 0.2,
+                    (seg.origin.y + seg.destination.y) / 2 + 0.2,
+                    f"{seg.cost:.2f}",
+                    color='black', fontsize=8, zorder=3)
+
+        # Draw nodes
+        for node in G.nodes:
+            ax.plot(node.x, node.y, 'ko', markersize=3)
+            ax.text(node.x, node.y, node.name, fontsize=7, color='black')
 
     # Update the canvas instead of creating new one
     if 'canvas' not in globals() or not canvas.get_tk_widget().winfo_exists():
