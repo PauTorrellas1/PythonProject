@@ -73,26 +73,10 @@ def show_new_graph():
     else:
         canvas.draw()
 
-show_message("Probando el grafo...")
-original_G = CreateGraph_1() #Guardamos el gráfico original en una variable
-edited_G = CreateGraph_1()  #Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros
-G = edited_G #Especificamos que por el momento el gráfico a mostrar será el editado
+G = edited_G = original_G = CreateGraph_1() #Guardamos el gráfico original en una variable // Hacemos una copia del gráfico original, donde se mostrarán todas las ediciones hechas por nosotros // Especificamos que por el momento el gráfico a mostrar será el editado
 set_graph(G) # El gráfico mostrado será el editado (a espera de algún cambio)
 root.title("GUI") #Abrimos la ventana del GUI
-create_message_area() #Creamos el área para mensajes que usaremos más tarde
 show_new_graph() #Mostramos el gráfico
-path_info_frame = tk.Frame(root)
-path_info_frame.grid(row=19, column=5, sticky="ew", padx=10, pady=5)
-path_info_text = tk.Text(
-    path_info_frame,
-    height=4,
-    wrap=tk.WORD,
-    font=("Arial", 10),
-    bg="white",
-    fg="black",
-    relief=tk.FLAT)
-path_info_text.pack(fill=tk.BOTH, expand=True)
-
 def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
     tk.Button(master=master,
         text=tex,
@@ -117,7 +101,12 @@ def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
         wraplength=1000).grid(row=row, column=column)
 def label(text, row, column,master=root):
     tk.Label(master=master, text=text, padx=10,font=7).grid(row=row, column=column)
-
+def not_valid():
+    #not valid msg for not valid inputs
+    lb = tk.Message(root, text="Not Valid", bg='red',pady=20,padx=20)
+    lb.grid(row=20, column=0)
+    # noinspection PyTypeChecker
+    root.after(1000, lb.destroy)
 
 def show_graph():
     '''Función que nos muestra el grafo original'''
@@ -126,7 +115,7 @@ def show_graph():
     G = original_G
     restore_main_view()
     show_new_graph()
-    show_message("Showing original graph")
+    message("Showing original graph")
 
 def show_graph_1():
     '''Función que nos muestra el grafo editado'''
@@ -135,16 +124,18 @@ def show_graph_1():
     G = edited_G
     restore_main_view()
     show_new_graph()
-    show_message("Showing edited graph")
+    message("Showing edited graph")
 
 def restore_main_view():
     '''Reseteamos la vista para no superponer unos botones con otros,
     aunque estos sean idénticos'''
     for widget in root.winfo_children():
-        if widget.grid_info().get("column", 0) in [2, 3, 4]:
+        if widget.grid_info().get("column", 0) in [0,1,2,3,4,6,7]:
             widget.destroy()
     Entries()
     show_new_graph()
+    button(lambda: close(), "Exit", 0, 7, "red", width=5, pady=10)
+    message("Main view")
 
 def print_graph_info():
     """Muestra todos los nodos y segmentos de un archivo guardado dentro del GUI"""
@@ -155,12 +146,12 @@ def print_graph_info():
                 for node in G.nodes:
                     graph_info.write(f'N,{node.name},{node.x},{node.y}\n')
             else:
-                show_message('There are not any nodes in the graph', is_error=True)
+                not_valid(),message('There are not any nodes in the graph')
             if hasattr(G, 'segments') and G.segments:
                 for segment in G.segments:
                     graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
             else:
-                show_message('There are not any segments in the graph', is_error=True)
+                not_valid(),message('There are not any segments in the graph')
     global G
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
@@ -203,9 +194,10 @@ def show_neighbors():
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
-    tk.Label(root, text="Node to analyze:").grid(row=0, column=2)
+    label("Node to analyze:",0,2)
     e_neighbor = tk.Entry(root)
     e_neighbor.grid(row=0, column=3)
+    message("Neighbors view")
 
     def search_and_clear(event=None):
         '''Limpiamos la entrada de texto donde escribimos el nodoa estudiar'''
@@ -222,16 +214,16 @@ def show_neighbors():
 
         node_name = node_name.strip()
         if not node_name:
-            show_message("Enter a node name", is_error=True)
+            message("Enter a node name")
             return
 
         node = SearchNode(G, node_name)  # Use the current graph G
         if not node:
-            show_message(f"Node '{node_name}' doesn't exist", is_error=True)
+            not_valid(),message(f"Node '{node_name}' doesn't exist")
             return
 
         if not node.neighbors:
-            show_message(f"Node '{node_name}' has no neighbors", is_error=True)
+            not_valid(),message(f"Node '{node_name}' has no neighbors")
             return
 
         # Draw all nodes first
@@ -272,13 +264,8 @@ def show_neighbors():
         canvas.get_tk_widget().grid(row=0, column=5, rowspan=20)
 
     e_neighbor.bind('<Return>', search_and_clear)
-    search_btn = tk.Button(
-        root,
-        text='Show Neighbors',
-        command=lambda: search_and_clear(),
-        cursor='hand2'
-    )
-    search_btn.grid(row=0, column=4)
+    button(lambda: search_and_clear(),'Show Neighbors',0, 4)
+    button(lambda: restore_main_view(), "Back", 1, 7, "red", width=5, pady=10)
 
 def create_new_graph():
     '''Esta función crea un gráfico en blanco'''
@@ -287,7 +274,7 @@ def create_new_graph():
     G = edited_G
     current_display_mode = "edited"
     restore_main_view()
-    show_message("Created new empty graph")
+    message("Created new empty graph")
 
 def confirm_new_graph():
     """Muestra un aviso para confirmar que el usuario realmente quiere abrir el grafo,
@@ -337,22 +324,44 @@ def confirm_new_graph():
     confirm_window.grab_set()
     confirm_window.wait_window()
 
-button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: show_graph_1, "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: create_new_graph(), "Crete new graph", 2, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)#, master=plotting_frame)
-button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
+def paths():
+    for widget in root.winfo_children():
+        if widget.grid_info().get("column", 0) in [0,1,2,3]:
+            widget.destroy()
+
+    label("Node to analyze:", 0, 0)
+    e_paths = tk.Entry(root)
+    e_paths.grid(row=0, column=1)
+    button(search_paths, 'Show paths', 0, 2)
+    show_paths(e_paths.get().strip())
+
+    #label("Find the closest path between two nodes:",1, 3)
+    label("From",1, 0)
+    label("To",2, 0)
+    e_path_from = tk.Entry(root)
+    e_path_from.grid(row=1, column=1)
+    e_path_to = tk.Entry(root)
+    e_path_to.grid(row=2, column=1)
+    button(search_closest_path,'Find closest path',3, 1)
+    button(lambda: restore_main_view(), "Back", 1, 7, "red", width=5, pady=10)
+    button(lambda: close(), "Exit", 0, 7, "red", width=5, pady=10)
+    find_closest_path(e_path_from.get().strip(),e_path_to.get().strip())
+    message("Pathing view")
+    show_new_graph()
+
+
 
 def Entries():
-    '''Cada una de las entradas de texto que usaremos en el menú principal
-    de nuestra aplicación. si llevan tk.Label son únicamente texto,
-    mientras que si llevan tk.Entry son entradas de texto donde debemos escribir.
-    Si llevan tk.Button son botones para presionar y llevar a cabo una acción o comando.'''
     """global e_name, e_x, e_y, e_from, e_to, e_delete_n, e_delete_s, e_file"""# en ppi no cal
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
+    button(lambda: show_graph(), "Show original graph", 0, 0, width=20, pady=10)  # , master=plotting_frame)
+    button(lambda: show_graph_1, "Show edited graph", 1, 0, width=20, pady=10)  # , master=plotting_frame)
+    button(lambda: create_new_graph(), "Crete new graph", 2, 0, width=20, pady=10)  # , master=plotting_frame)
+    button(lambda: print_graph_info(), "Save the information", 3, 0, width=20, pady=10)  # , master=plotting_frame)
+    button(lambda: paths(), "Analyze paths", 4, 0, width=20, pady=10)  # , master=plotting_frame)
+    button(show_neighbors, "Show node neighbors", 5, 0, width=20, pady=10)  # , master=plotting_frame)
 
     label("File Name",0, 2)
     e_file = tk.Entry(root)  # Primer entry
@@ -368,16 +377,16 @@ def Entries():
                 set_graph(G)  # Make sure to update the graph reference in path.py
                 current_display_mode = "edited"
                 show_graph_1()
-                show_message(f"Successfully loaded graph from {e_file.get()}")
+                message(f"Successfully loaded graph from {e_file.get()}")
                 e_file.delete(0, 'end')
             else:
-                show_message("No valid nodes found in file", is_error=True)
+                not_valid(),message("No valid nodes found in file")
                 e_file.delete(0, 'end')
         except FileNotFoundError:
-            show_message(f"File not found: {e_file.get()}", is_error=True)
+            not_valid(),message(f"File not found: {e_file.get()}")
             e_file.delete(0, 'end')
         except Exception as e:
-            show_message(f"Error loading file: {str(e)}", is_error=True)
+            not_valid(),message(f"Error loading file: {str(e)}")
     button(entry1, "Entry", 1, 3,width=12)
 
     label("New node name", 2, 2)
@@ -397,19 +406,19 @@ def Entries():
         x_str = e_x.get().strip()
         y_str = e_y.get().strip()
         if not name or not x_str or not y_str:
-            show_message("All the entries must be filled", is_error=True)
+            not_valid(),message("All the entries must be filled")
             return
         try:
             x = float(x_str)
             y = float(y_str)
         except ValueError:
-            show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
+            not_valid(),message("The coordinates must be numbers, they can't be letters or weird symbols")
             # Limpiamos las entradas de texto
             e_x.delete(0, 'end')
             e_y.delete(0, 'end')
             return
         if SearchNode(edited_G, name):
-            show_message(f'The node "{name}" already exists', is_error=True)
+            not_valid(),message(f'The node "{name}" already exists')
             e_name.delete(0, 'end')
             return
         AddNode(edited_G, Node(name, x, y))
@@ -432,16 +441,16 @@ def Entries():
         e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
         e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
         if not e_name_from or not e_name_to:
-            show_message("You must write both nodes first.", is_error=True)
+            not_valid(),message("You must write both nodes first.")
             return
         node_from = SearchNode(edited_G, e_name_from)
         node_to = SearchNode(edited_G, e_name_to)
         if not node_from:
-            show_message(f"The node '{e_name_from}' doesn't exists. Create it first.", is_error=True)
+            not_valid(),message(f"The node '{e_name_from}' doesn't exist. Create it first.")
             e_from.delete(0, 'end')
             return
         if not node_to:
-            show_message(f"The node '{e_name_to}' doesn't exists. Create it first.", is_error=True)
+            not_valid(),message(f"The node '{e_name_to}' doesn't exist. Create it first.")
             e_to.delete(0, 'end')
             return
         e_seg = f"{e_name_from}{e_name_to}"
@@ -452,7 +461,7 @@ def Entries():
             (s.name == e_seg)
             for s in edited_G.segments)
         if segment_exists:
-            show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
+            not_valid(),message(f"It already exists a segment between {e_name_from} and {e_name_to}")
             e_from.delete(0, 'end')
             e_to.delete(0, 'end')
             return
@@ -473,15 +482,15 @@ def Entries():
         global edited_G
         node_name = e_delete_n.get().strip()
         if not node_name:
-            show_message("You must write the name of the node you want to delete.", is_error=True)
+            not_valid(),message("You must write the name of the node you want to delete.")
             e_delete_n.delete(0, 'end')
             return
         if not SearchNode(edited_G, node_name):
-            show_message(f"The node '{node_name}' doesn't exists.", is_error=True)
+            not_valid(),message(f"The node '{node_name}' doesn't exists.")
             e_delete_n.delete(0, 'end')
             return
         DeleteNode(edited_G, node_name)
-        show_message(f"The node '{node_name}' was eliminated successfully.")
+        message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
         show_graph_1()
     button(delete_node, "Delete Node", 10, 3,width=12)
@@ -495,7 +504,7 @@ def Entries():
         global edited_G
         segment_name = e_delete_s.get().strip()
         if not segment_name:
-            show_message("You must write the name of the segment you want to delete.", is_error=True)
+            not_valid(),message("You must write the name of the segment you want to delete.")
             e_delete_s.delete(0, 'end')
             return
         segment_to_delete = None
@@ -504,11 +513,11 @@ def Entries():
                 segment_to_delete = seg
                 break
         if not segment_to_delete:
-            show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
+            not_valid(),message(f"It doesn't exist any segment called '{segment_name}'")
             e_delete_s.delete(0, 'end')
             return
         DeleteSegment(edited_G, segment_to_delete.name)
-        show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
+        message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
         show_graph_1()
     button(delete_segment, 'Delete Segment', 14, 3,width=12)
@@ -527,6 +536,9 @@ def Entries():
     root.state('zoomed')
     label("", 0, 4),label("", 0, 6)#serves as a separator for the graph
 Entries()
+
+
+
 def close():
     p.close('all')
     root.destroy()
