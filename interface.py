@@ -289,7 +289,7 @@ def print_graph_info():
         text='Save',
         command=lambda: [save_info(), info_window.destroy()],
         width=15
-    ).pack(side=tk.LEFT, padx=10)
+    ).pack(side=tk.RIGHT, padx=10)
 
     tk.Button(
         btn_frame,
