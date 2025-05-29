@@ -120,7 +120,7 @@ def draw_segment(seg, color, width, zorder, reverse=False):
                      linewidth=width,
                      zorder=zorder)
 
-def find_closest_path_entries():
+def find_closest_path_entries(Event=None):
     """Introducimos los botones que usaremos para encontrar el camino más corto
     y las diferentes entradas donde introduciremos nuestros nodos"""
     tk.Label(root, text="Find the closest path between two nodes:").grid(row=1, column=3)
@@ -222,48 +222,34 @@ def find_closest_path_entries():
     def highlight_path(path_data):
         """Remarcamos los caminos mostrados en la GUI usando el objeto Path"""
         global fig, ax, canvas
-
-        # Clear the plot
         ax.clear()
-
-        if isinstance(path_data, dict):  # AirSpace path
-            # Store current path in graph object
+        if isinstance(path_data, dict):
             G.current_path = path_data
-
-            # Get all point names in the path for easy lookup
             path_point_names = set(path_data['path'])
-
-            # Plot all points first (gray)
             for point in G.nav_points:
-                # Determine point color
-                if point['name'] == path_data['path'][0]:  # Origin
+                if point['name'] == path_data['path'][0]:
                     color = 'blue'
                     markersize = 8
-                elif point['name'] == path_data['path'][-1]:  # Destination
+                elif point['name'] == path_data['path'][-1]:
                     color = 'red'
                     markersize = 8
-                elif point['name'] in path_point_names:  # Path point
+                elif point['name'] in path_point_names:
                     color = 'green'
                     markersize = 7
-                else:  # Regular point
+                else:
                     color = 'gray'
                     markersize = 5
-
                 ax.plot(point['lon'], point['lat'], marker=(3, 0, -45), color=color, markersize=markersize, zorder=3)
                 ax.text(point['lon'] + 0.05, point['lat'] + 0.05,
                         point['name'],
                         fontsize=8,
                         zorder=4)
-
-            # Plot all segments first (gray)
             for seg in G.nav_segments:
                 origin = next((p for p in G.nav_points if p['id'] == seg['origin_id']), None)
                 dest = next((p for p in G.nav_points if p['id'] == seg['dest_id']), None)
 
                 if not origin or not dest:
-                    continue  # Skip if points not found
-
-                # Check if this segment is in the path
+                    continue
                 is_path_segment = False
                 for i in range(len(path_data['path']) - 1):
                     if (origin['name'] == path_data['path'][i] and
@@ -274,76 +260,58 @@ def find_closest_path_entries():
                             origin['name'] == path_data['path'][i + 1]):
                         is_path_segment = True
                         break
-
                 if is_path_segment:
-                    # Path segment - red
                     ax.plot([origin['lon'], dest['lon']],
                             [origin['lat'], dest['lat']],
                             'r-', linewidth=2, zorder=2)
                 else:
-                    # Regular segment - gray
                     ax.plot([origin['lon'], dest['lon']],
                             [origin['lat'], dest['lat']],
                             '#CCCCCC', linewidth=1, zorder=1)
-
-                # Add distance label for all segments
                 ax.text((origin['lon'] + dest['lon']) / 2,
                         (origin['lat'] + dest['lat']) / 2,
                         f"{seg['distance']:.1f}",
                         fontsize=8,
                         zorder=3)
         else:
-            # Store current path in graph object
             G.current_path = path_data
-
-            # Original graph path plotting (keep existing style)
             PlotPath(G, path_data)
-
-        # Common plot settings
         ax.grid(color="#717171", linestyle="--")
         ax.set_xlabel("Longitude")
         ax.set_ylabel("Latitude")
         ax.set_title("Airspace Map")
-
-        # Update the canvas
+        e_path_from.delete(0, 'end')
+        e_path_to.delete(0, 'end')
         canvas.draw()
 
     def search_closest_path(event=None):
         node_from = e_path_from.get().strip()
         node_to = e_path_to.get().strip()
-
         if is_real_map(G):
-            # AirSpace handling
             from_point = next((p for p in G.nav_points if p['name'] == node_from), None)
             to_point = next((p for p in G.nav_points if p['name'] == node_to), None)
-
             if not from_point or not to_point:
                 show_message(f"One or both nodes not found", is_error=True)
                 return
-
-            # Create consistent node objects
             from_node = SimpleNamespace(name=from_point['name'],
                                         x=from_point['lon'],
                                         y=from_point['lat'])
             to_node = SimpleNamespace(name=to_point['name'],
                                       x=to_point['lon'],
                                       y=to_point['lat'])
-
             path_data = finding_shortest_path(G, from_node, to_node)
         else:
-            # Original graph handling
             from_node = SearchNode(G, node_from)
             to_node = SearchNode(G, node_to)
             if not from_node or not to_node:
                 show_message(f"One or both nodes not found", is_error=True)
                 return
             path_data = finding_shortest_path(G, from_node, to_node)
-
         if path_data:
             highlight_path(path_data)
             if isinstance(path_data, dict):
                 show_message(f"Path found with distance: {path_data['distance']:.2f}")
-            else:  # It's a Path object
+            else:
                 show_message(f"Path found with distance: {path_data.cost:.2f}")
         else:
             show_message(f"No path exists between {node_from} and {node_to}", is_error=True)
@@ -367,11 +335,13 @@ def show_paths():
 
     def PlotAllPaths(node_name):
         '''Resalta todos los caminos de un nodo establecido con anterioridad'''
-        global fig, ax, canvas, G  # Use the current graph
+        global fig, ax, canvas, G  #Usamos el grafo actual
+        global current_visualization_mode, current_visualization_node
+        current_visualization_mode = "paths"
+        current_visualization_node = node_name
         ax.clear()
         ax.grid(True, which='both', linestyle='--', linewidth=0.5, color='#AA336A')
         ax.set_axisbelow(True)
-
         if is_real_map(G):
             start_node = next((p for p in G.nav_points if p['name'] == node_name), None)
             if not start_node:
