@@ -547,97 +547,127 @@ def Entries():
     label("Y",4, 2)
     e_y = tk.Entry(root)  # Valor Y del nuevo nodo
     e_y.grid(row=4, column=3,pady=10)
-    def add_node(event=None):
-        '''Añadimos un nodo al gráfico, marcando el nombre del nodo
-        y sus cordenadas. Si ese nodo ya existe el código nos lo hará saber'''
-        global edited_G
-        name = e_name.get().strip()
-        x_str = e_x.get().strip()
-        y_str = e_y.get().strip()
-        if not name or not x_str or not y_str:
-            show_message("All the entries must be filled", is_error=True)
-            return
-        try:
-            x = float(x_str)
-            y = float(y_str)
-        except ValueError:
-            show_message("The coordinates must be numbers, they can't be letters or weird symbols", is_error=True)
-            # Limpiamos las entradas de texto
-            e_x.delete(0, 'end')
-            e_y.delete(0, 'end')
-            return
-        if SearchNode(edited_G, name):
-            show_message(f'The node "{name}" already exists', is_error=True)
-            e_name.delete(0, 'end')
-            return
-        AddNode(edited_G, Node(name, x, y))
-        show_graph_1()
-        e_name.delete(0, 'end')
-        e_x.delete(0, 'end')
-        e_y.delete(0, 'end')
-    button(add_node, "Add Node", 5, 3,width=12)
-
     label("From",6,2)
     e_from = tk.Entry(root)  # Nodo origen del nuevo segmento
     e_from.grid(row=6, column=3,pady=10)
     label("To",7,2)
     e_to = tk.Entry(root) #Nodo destino del nuevo segmento
     e_to.grid(row=7, column=3,pady=10)
-    def add_segment(event=None):
-        '''Añadimos un segmento al gráfico entre dos puntos, ya sean antiguos
-        o creados con la función de AddNode'''
+
+    def add_node(event=None):
         global edited_G
-        e_name_from = e_from.get().strip()  # Obtenemos de donde proviene
-        e_name_to = e_to.get().strip()  # Obtenemos el nodo destinación
+        if is_real_map(edited_G):
+            show_message("Cannot add segments to real maps", is_error=True)
+            e_from.delete(0, 'end')
+            e_to.delete(0, 'end')
+            return
+
+        e_name_from = e_from.get().strip()
+        e_name_to = e_to.get().strip()
+
         if not e_name_from or not e_name_to:
             show_message("You must write both nodes first.", is_error=True)
             return
+
         node_from = SearchNode(edited_G, e_name_from)
         node_to = SearchNode(edited_G, e_name_to)
+
         if not node_from:
-            show_message(f"The node '{e_name_from}' doesn't exists. Create it first.", is_error=True)
+            show_message(f"The node '{e_name_from}' doesn't exists.", is_error=True)
             e_from.delete(0, 'end')
             return
+
         if not node_to:
-            show_message(f"The node '{e_name_to}' doesn't exists. Create it first.", is_error=True)
+            show_message(f"The node '{e_name_to}' doesn't exists.", is_error=True)
             e_to.delete(0, 'end')
             return
+
         e_seg = f"{e_name_from}{e_name_to}"
-        #Creamos el nombre del segmento (vector)
-        #a partir del nodo destino del nodo final
-        #Creamos el otro vector (AB - BA)
         segment_exists = any(
             (s.name == e_seg)
             for s in edited_G.segments)
+
         if segment_exists:
             show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
             e_from.delete(0, 'end')
             e_to.delete(0, 'end')
             return
+
         AddSegment(edited_G, e_seg, e_name_from, e_name_to)
         e_from.delete(0, 'end')
         e_to.delete(0, 'end')
-        #Añadimos estos segmentos a nuestro gráfico y fuente de información
-        e_to.delete(0, 'end')
+        show_graph_1()
+    button(add_node, "Add Node", 5, 3,width=12)
+
+    def add_segment(event=None):
+        '''Añadimos un segmento al gráfico'''
+        global edited_G
+        if is_real_map(edited_G):
+            show_message("Cannot add segments to real maps", is_error=True)
+            e_from.delete(0, 'end')
+            e_to.delete(0, 'end')
+            return
+
+        e_name_from = e_from.get().strip()
+        e_name_to = e_to.get().strip()
+
+        if not e_name_from or not e_name_to:
+            show_message("You must write both nodes first.", is_error=True)
+            return
+
+        node_from = SearchNode(edited_G, e_name_from)
+        node_to = SearchNode(edited_G, e_name_to)
+
+        if not node_from:
+            show_message(f"The node '{e_name_from}' doesn't exists.", is_error=True)
+            e_from.delete(0, 'end')
+            return
+
+        if not node_to:
+            show_message(f"The node '{e_name_to}' doesn't exists.", is_error=True)
+            e_to.delete(0, 'end')
+            return
+
+        e_seg = f"{e_name_from}{e_name_to}"
+        segment_exists = any(
+            (s.name == e_seg)
+            for s in edited_G.segments)
+
+        if segment_exists:
+            show_message(f"It already exists a segment between {e_name_from} and {e_name_to}", is_error=True)
+            e_from.delete(0, 'end')
+            e_to.delete(0, 'end')
+            return
+
+        AddSegment(edited_G, e_seg, e_name_from, e_name_to)
         e_from.delete(0, 'end')
+        e_to.delete(0, 'end')
         show_graph_1()
     button(add_segment, "Add Segment", 8, 3,width=12)
 
     label("Delete Node",9,2)
     e_delete_n = tk.Entry(root) #Nombre del nodo a borrar
     e_delete_n.grid(row=9, column=3,pady=15)
+
     def delete_node(event=None):
-        '''Eliminamos nodos del gráfico, ya sean creados por nosotros o anteriores'''
+        '''Eliminamos nodos del gráfico'''
         global edited_G
+        if is_real_map(edited_G):
+            show_message("Cannot delete nodes from real maps", is_error=True)
+            e_delete_n.delete(0, 'end')
+            return
+
         node_name = e_delete_n.get().strip()
         if not node_name:
             show_message("You must write the name of the node you want to delete.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
+
         if not SearchNode(edited_G, node_name):
             show_message(f"The node '{node_name}' doesn't exists.", is_error=True)
             e_delete_n.delete(0, 'end')
             return
+
         DeleteNode(edited_G, node_name)
         show_message(f"The node '{node_name}' was eliminated successfully.")
         e_delete_n.delete(0, 'end')
@@ -647,10 +677,14 @@ def Entries():
     label('Delete segment',11,2)
     e_delete_s = tk.Entry(root) #Nombre del segmento a borrar
     e_delete_s.grid(row=11, column=3,pady=15)
+
     def delete_segment(event=None):
-        '''La misma función que delete_node, solo que en lugar de eliminar
-        nodos esta función elimina segmentos'''
+        '''Eliminamos segmentos del gráfico'''
         global edited_G
+        if is_real_map(edited_G):
+            show_message("Cannot delete segments from real maps", is_error=True)
+            e_delete_s.delete(0, 'end')
+            return
         segment_name = e_delete_s.get().strip()
         if not segment_name:
             show_message("You must write the name of the segment you want to delete.", is_error=True)
@@ -665,6 +699,7 @@ def Entries():
             show_message(f"It doesn't exists any segment called '{segment_name}'", is_error=True)
             e_delete_s.delete(0, 'end')
             return
+
         DeleteSegment(edited_G, segment_to_delete.name)
         show_message(f"Segment '{segment_to_delete.name}' deleted successfully.")
         e_delete_s.delete(0, 'end')
