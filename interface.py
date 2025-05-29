@@ -176,21 +176,48 @@ def restore_main_view():
     Entries()
     show_new_graph()
 
+
 def print_graph_info():
     """Muestra todos los nodos y segmentos de un archivo guardado dentro del GUI"""
+
     def save_info():
         '''Guarda toda la información de los nodos y segmentos en un archivo que se puede abrir después'''
         with open('Graph information', 'w') as graph_info:
-            if hasattr(G, 'nodes') and G.nodes:
-                for node in G.nodes:
-                    graph_info.write(f'N,{node.name},{node.x},{node.y}\n')
+            if is_real_map(G):
+                # Save real map (AirSpace) information
+                if hasattr(G, 'nav_points') and G.nav_points:
+                    graph_info.write("=== NAVIGATION POINTS ===\n")
+                    for point in G.nav_points:
+                        graph_info.write(f"ID: {point['id']}, Name: {point['name']}, "
+                                         f"Lat: {point['lat']}, Lon: {point['lon']}\n")
+
+                if hasattr(G, 'nav_airports') and G.nav_airports:
+                    graph_info.write("\n=== AIRPORTS ===\n")
+                    for airport in G.nav_airports:
+                        graph_info.write(f"{airport}\n")
+
+                if hasattr(G, 'nav_segments') and G.nav_segments:
+                    graph_info.write("\n=== SEGMENTS ===\n")
+                    for segment in G.nav_segments:
+                        origin = next((p for p in G.nav_points if p['id'] == segment['origin_id']), None)
+                        dest = next((p for p in G.nav_points if p['id'] == segment['dest_id']), None)
+                        if origin and dest:
+                            graph_info.write(f"{origin['name']} -> {dest['name']}: "
+                                             f"{segment['distance']:.2f} distance\n")
             else:
-                show_message('There are not any nodes in the graph', is_error=True)
-            if hasattr(G, 'segments') and G.segments:
-                for segment in G.segments:
-                    graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
-            else:
-                show_message('There are not any segments in the graph', is_error=True)
+                # Original graph saving
+                if hasattr(G, 'nodes') and G.nodes:
+                    for node in G.nodes:
+                        graph_info.write(f'N,{node.name},{node.x},{node.y}\n')
+                else:
+                    show_message('There are not any nodes in the graph', is_error=True)
+
+                if hasattr(G, 'segments') and G.segments:
+                    for segment in G.segments:
+                        graph_info.write(f'S,{segment.name},{segment.origin.name},{segment.destination.name}\n')
+                else:
+                    show_message('There are not any segments in the graph', is_error=True)
+
     global G
     info_window = tk.Toplevel(root)
     info_window.title("Graph Information")
@@ -201,28 +228,55 @@ def print_graph_info():
     text_widget = tk.Text(text_frame, wrap=tk.WORD, yscrollcommand=scrollbar.set)
     text_widget.pack(fill=tk.BOTH, expand=True)
     scrollbar.config(command=text_widget.yview)
-    #Opciones de visualización de la ventana donde observamos todos los nodos y segmentos del gráfico
-    #Aquí podremos ver toda la información que vayamos a guardar y asegurarnos que esta esté bien guardada
+
     info_text = "=== GRAPH INFORMATION ===\n\n"
-    if hasattr(G, 'nodes') and G.nodes:
-        info_text += "NODES:\n"
-        for node in G.nodes:
-            info_text += f"- {node.name}: (x={node.x}, y={node.y})\n"
+
+    if is_real_map(G):
+        # Real map (AirSpace) information
+        if hasattr(G, 'nav_points') and G.nav_points:
+            info_text += "NAVIGATION POINTS:\n"
+            for point in G.nav_points:
+                info_text += f"- {point['name']} (ID: {point['id']}): Lat={point['lat']}, Lon={point['lon']}\n"
+        else:
+            info_text += "No navigation points in the graph\n"
+
+        info_text += "\nAIRPORTS:\n"
+        if hasattr(G, 'nav_airports') and G.nav_airports:
+            for airport in G.nav_airports:
+                info_text += f"- {airport}\n"
+        else:
+            info_text += "No airports in the graph\n"
+
+        info_text += "\nSEGMENTS:\n"
+        if hasattr(G, 'nav_segments') and G.nav_segments:
+            for segment in G.nav_segments:
+                origin = next((p for p in G.nav_points if p['id'] == segment['origin_id']), None)
+                dest = next((p for p in G.nav_points if p['id'] == segment['dest_id']), None)
+                if origin and dest:
+                    info_text += f"- {origin['name']} -> {dest['name']}: {segment['distance']:.2f} distance\n"
+        else:
+            info_text += "No segments in the graph\n"
     else:
-        info_text += "No nodes in the graph\n"
-    info_text += "\n"
-    if hasattr(G, 'segments') and G.segments:
-        info_text += "SEGMENTS:\n"
-        for segment in G.segments:
-            dist = Distance(segment.origin, segment.destination)
-            info_text += f"- {segment.name}: {segment.origin.name} -> {segment.destination.name} (Distance: {dist})\n"
-    else:
-        info_text += "No segments in the graph\n"
+        # Original graph information
+        if hasattr(G, 'nodes') and G.nodes:
+            info_text += "NODES:\n"
+            for node in G.nodes:
+                info_text += f"- {node.name}: (x={node.x}, y={node.y})\n"
+        else:
+            info_text += "No nodes in the graph\n"
+
+        info_text += "\nSEGMENTS:\n"
+        if hasattr(G, 'segments') and G.segments:
+            for segment in G.segments:
+                dist = Distance(segment.origin, segment.destination)
+                info_text += f"- {segment.name}: {segment.origin.name} -> {segment.destination.name} (Distance: {dist})\n"
+        else:
+            info_text += "No segments in the graph\n"
+
     text_widget.insert(tk.END, info_text)
-    #Mostramos toda la información guardada, es decir, los Nodos y sus posiciones,
-    #y los segmentos y sus nombres, los respectivos nodos que los forman y el
-    #coste de cada uno de ellos
-    save_button = tk.Button(info_window, text='Save the information', command=lambda: [save_info(), info_window.destroy()])
+
+    save_button = tk.Button(info_window, text='Save the information',
+                            command=lambda: [save_info(), info_window.destroy()])
     save_button.pack(pady=9)
     close_button = tk.Button(info_window, text="Close", command=info_window.destroy)
     close_button.pack(pady=10)
