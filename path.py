@@ -312,6 +312,11 @@ def highlight_path(path_data):
     # Update the canvas
     canvas.draw()
 
+def message(txt,mster=root):
+    lb = tk.Message(master=mster,text=txt,width=800,font=("Arial",16))
+    lb.grid(row=22, column=5,columnspan=3)
+    root.after(10000, lb.destroy)
+
 def find_closest_path_entries(Event=None):
     """Introducimos los botones que usaremos para encontrar el camino más corto
     y las diferentes entradas donde introduciremos nuestros nodos"""

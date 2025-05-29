@@ -1,7 +1,218 @@
 from path import *
 from tkinter import filedialog
+from matplotlib.patches import Circle
+
+# Global variables for mouse interaction
+mouse_mode = "normal"  # Can be "add_node", "add_segment", "add_neighbor"
+drag_start_node = None
+selected_nodes = []  # For neighbor selection
+temp_line = None  # For visual feedback during dragging
 current_visualization_mode = "main"
 current_visualization_node = None
+
+
+def set_mouse_mode(mode):
+    """Set the current mouse interaction mode"""
+    global mouse_mode, selected_nodes, drag_start_node
+    mouse_mode = mode
+    selected_nodes = []
+    drag_start_node = None
+
+    # Update the message to show current mode
+    mode_messages = {
+        "normal": "Normal mode - Click buttons to interact",
+        "add_node": "Click on empty space to add a node",
+        "add_segment": "Drag from one node to another to create a segment",
+        "add_neighbor": "Click two nodes to connect them as neighbors"
+    }
+    message(mode_messages.get(mode, "Unknown mode"))
+def find_node_at_position(x, y, tolerance=0.5):
+    """Find if there's a node at the given position within tolerance"""
+    global G
+    for node in G.nodes:
+        distance = math.sqrt((node.x - x) ** 2 + (node.y - y) ** 2)
+        if distance <= tolerance:
+            return node
+    return None
+def generate_unique_node_name():
+    """Generate a unique node name"""
+    global G
+    existing_names = {node.name for node in G.nodes}
+
+    # Try single letters first
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        if letter not in existing_names:
+            return letter
+
+    # Try double letters
+    for first in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        for second in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+            name = first + second
+            if name not in existing_names:
+                return name
+
+    # Fallback to numbers
+    counter = 1
+    while f"N{counter}" in existing_names:
+        counter += 1
+    return f"N{counter}"
+def on_mouse_click(event):
+    """Handle mouse click events on the canvas"""
+    global mouse_mode, selected_nodes, drag_start_node, edited_G, G
+
+    if event.inaxes != ax:
+        return
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        return
+
+    clicked_node = find_node_at_position(x, y)
+
+    if mouse_mode == "add_node":
+        if not clicked_node:  # Only add node if clicking on empty space
+            node_name = generate_unique_node_name()
+            new_node = Node(node_name, round(x, 1), round(y, 1))
+            AddNode(edited_G, new_node)
+            G = edited_G  # Update current graph reference
+            show_graph_1()
+            message(f"Added node {node_name} at ({x:.1f}, {y:.1f})")
+        else:
+            message("Cannot add node - there's already a node at this position")
+
+    elif mouse_mode == "add_neighbor":
+        if clicked_node:
+            if clicked_node in selected_nodes:
+                selected_nodes.remove(clicked_node)
+                message(f"Deselected node {clicked_node.name}")
+            else:
+                selected_nodes.append(clicked_node)
+                message(f"Selected node {clicked_node.name}")
+
+            # Highlight selected nodes
+            highlight_selected_nodes()
+
+            if len(selected_nodes) == 2:
+                # Create segment between the two selected nodes
+                node1, node2 = selected_nodes
+                segment_name = f"{node1.name}{node2.name}"
+
+                # Check if segment already exists
+                segment_exists = any(
+                    (s.origin == node1 and s.destination == node2) or
+                    (s.origin == node2 and s.destination == node1)
+                    for s in edited_G.segments
+                )
+
+                if not segment_exists:
+                    AddSegment(edited_G, segment_name, node1.name, node2.name)
+                    G = edited_G
+                    show_graph_1()
+                    message(f"Added segment between {node1.name} and {node2.name}")
+                else:
+                    message(f"Segment between {node1.name} and {node2.name} already exists")
+
+                selected_nodes = []
+        else:
+            message("Click on nodes to select them for connection")
+def on_mouse_press(event):
+    """Handle mouse button press for drag operations"""
+    global mouse_mode, drag_start_node
+
+    if event.inaxes != ax or mouse_mode != "add_segment":
+        return
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        return
+
+    clicked_node = find_node_at_position(x, y)
+    if clicked_node:
+        drag_start_node = clicked_node
+        message(f"Drag from {clicked_node.name} to another node")
+def on_mouse_drag(event):
+    """Handle mouse drag for visual feedback"""
+    global mouse_mode, drag_start_node, temp_line, ax, canvas
+
+    if (event.inaxes != ax or mouse_mode != "add_segment" or
+            drag_start_node is None or event.xdata is None or event.ydata is None):
+        return
+
+    # Remove previous temporary line
+    if temp_line:
+        temp_line.remove()
+        temp_line = None
+
+    # Draw temporary line
+    temp_line, = ax.plot([drag_start_node.x, event.xdata],
+                         [drag_start_node.y, event.ydata],
+                         'r--', linewidth=2, alpha=0.7)
+    canvas.draw_idle()
+def on_mouse_release(event):
+    """Handle mouse button release to complete drag operations"""
+    global mouse_mode, drag_start_node, temp_line, edited_G, G
+
+    if (event.inaxes != ax or mouse_mode != "add_segment" or
+            drag_start_node is None):
+        return
+
+    # Remove temporary line
+    if temp_line:
+        temp_line.remove()
+        temp_line = None
+        canvas.draw_idle()
+
+    x, y = event.xdata, event.ydata
+    if x is None or y is None:
+        drag_start_node = None
+        return
+
+    end_node = find_node_at_position(x, y)
+
+    if end_node and end_node != drag_start_node:
+        segment_name = f"{drag_start_node.name}{end_node.name}"
+
+        # Check if segment already exists
+        segment_exists = any(
+            (s.origin == drag_start_node and s.destination == end_node) or
+            (s.origin == end_node and s.destination == drag_start_node)
+            for s in edited_G.segments
+        )
+
+        if not segment_exists:
+            AddSegment(edited_G, segment_name, drag_start_node.name, end_node.name)
+            G = edited_G
+            show_graph_1()
+            message(f"Added segment from {drag_start_node.name} to {end_node.name}")
+        else:
+            message(f"Segment between {drag_start_node.name} and {end_node.name} already exists")
+    else:
+        message("Drag to a different node to create a segment")
+
+    drag_start_node = None
+def highlight_selected_nodes():
+    """Highlight the currently selected nodes"""
+    global selected_nodes, ax, canvas
+
+    # Redraw the graph
+    show_graph_1()
+
+    # Highlight selected nodes with red circles
+    for node in selected_nodes:
+        circle = Circle((node.x, node.y), 0.3, color='red', fill=False, linewidth=3)
+        ax.add_patch(circle)
+
+    canvas.draw()
+def connect_mouse_events():
+    """Connect mouse event handlers to the canvas"""
+    global canvas
+
+    canvas.mpl_connect('button_press_event', on_mouse_click)
+    canvas.mpl_connect('button_press_event', on_mouse_press)
+    canvas.mpl_connect('motion_notify_event', on_mouse_drag)
+    canvas.mpl_connect('button_release_event', on_mouse_release)
+
+
 
 def CreateGraph_1 ():
     '''Crea un grafo con la información dada, cada uno de los nodos y segmentos'''
@@ -820,8 +1031,12 @@ button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "An
 button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)
 button(lambda: import_map(), 'Import a real map', 6, 0, width=20,pady=10)
 button(lambda: export_to_kml(G), "Export to KML", 7, 0, width=20, pady=10)
+button(lambda: set_mouse_mode("normal"), "Normal Mode", 8, 0, "lightblue", width=20, pady=10)
+button(lambda: set_mouse_mode("add_node"), "Click to Add Node", 9, 0, "lightgreen", width=20, pady=10)
+button(lambda: set_mouse_mode("add_segment"), "Drag to Add Segment", 10, 0, "yellow", width=20, pady=10)
+button(lambda: set_mouse_mode("add_neighbor"), "Click Nodes to Connect", 11, 0, "orange", width=20, pady=10)
 if is_real_map(G):
-    button(lambda: find_best_route(), 'Flight Planning', 8, 0, width=20, pady=10)
+    button(lambda: find_best_route(), 'Flight Planning', 12, 0, width=20, pady=10)
 
 
 
