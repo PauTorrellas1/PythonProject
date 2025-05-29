@@ -128,26 +128,14 @@ def button(command,tex,row,column,abg="blue",width=None,pady=2,master=root):
         text=tex,
         command=command,
         activebackground=abg,
-        activeforeground="white",
-        anchor="center",
-        bd=3,
-        bg="lightgray",
-        cursor="hand2",
-        disabledforeground="gray",
-        fg="black",
-        font=("Roboto", 12),
-        highlightbackground="black",
-        highlightcolor="green",
-        highlightthickness=2,
-        justify="center",
-        overrelief="raised",
+        cursor='hand2',
         padx=5,
         pady=pady,
         width=width,
         wraplength=1000).grid(row=row, column=column)
 
 def label(text, row, column,master=root):
-    tk.Label(master=master, text=text, padx=10,font=7).grid(row=row, column=column)
+    tk.Label(master=master, text=text, padx=10).grid(row=row, column=column)
 
 def show_graph():
     '''Función que nos muestra el grafo original'''
