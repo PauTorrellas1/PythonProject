@@ -128,22 +128,80 @@ def label(text, row, column,master=root):
     tk.Label(master=master, text=text, padx=10).grid(row=row, column=column)
 
 def show_graph():
-    '''Función que nos muestra el grafo original'''
     global current_display_mode, G
     current_display_mode = "original"
     G = original_G
     restore_main_view()
     show_new_graph()
+    update_flight_planning_button()  # Add this
     show_message("Showing original graph")
 
 def show_graph_1():
-    '''Función que nos muestra el grafo editado'''
     global current_display_mode, G
     current_display_mode = "edited"
     G = edited_G
     restore_main_view()
     show_new_graph()
+    update_flight_planning_button()  # Add this
     show_message("Showing edited graph")
+
+def create_new_graph():
+    global edited_G, G, current_display_mode
+    edited_G = Graph()
+    G = edited_G
+    current_display_mode = "edited"
+    restore_main_view()
+    update_flight_planning_button()  # Add this
+    show_message("Created new empty graph")
+
+def confirm_new_graph():
+    """Esta función le recuerda al usuario que de continuar
+     perderá su antiguo gráfico, y le da la opción de hacer lo que él desee"""
+    for widget in root.winfo_children():
+        if isinstance(widget, tk.Toplevel) and widget.title() == "Confirm":
+            widget.destroy()
+    confirm_window = tk.Toplevel(root)
+    confirm_window.title("Confirm")
+    confirm_window.transient(root)
+    confirm_window.grab_set()
+    confirm_window.resizable(False, False)
+    window_width = 460
+    window_height = 180
+    screen_width = confirm_window.winfo_screenwidth()
+    screen_height = confirm_window.winfo_screenheight()
+    x = (screen_width - window_width) // 2
+    y = (screen_height - window_height) // 2
+    confirm_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+    confirm_window.configure(bg="#FFC400")
+    content_frame = tk.Frame(confirm_window, bg="#FFC400")
+    content_frame.pack(padx=20, pady=15, fill="both", expand=True)
+    warning_icon = tk.Label(content_frame, text="⚠️", font=("Arial", 18), bg="#FFC400", fg="#172B4D")
+    warning_icon.grid(row=0, column=0, rowspan=2, sticky="n")
+    header = tk.Label(content_frame, text="Are you sure you want to create a new graph?",
+                      font=("Arial", 12, "bold"), bg="#FFC400", fg="#172B4D", anchor="w", justify="left")
+    header.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=(0, 5))
+    message = tk.Label(content_frame,
+                       text="All unsaved changes will be lost.\nWe recommend saving your previous graph first.",
+                       font=("Arial", 10), bg="#FFC400", fg="#172B4D", justify="left", anchor="w")
+    message.grid(row=1, column=1, sticky="w", padx=(10, 0))
+    button_frame = tk.Frame(confirm_window, bg="#FFC400")
+    button_frame.pack(pady=5)
+
+    def on_yes_confirm():
+        '''Confirma que está dispuesto a continuar con la creación de un nuevo gráfico'''
+        confirm_window.destroy()
+        create_new_graph()
+    btn_style = {
+        "bg": "#F1B300",
+        "fg": "#172B4D",
+        "font": ("Arial", 10, "bold"),
+        "relief": tk.FLAT,
+        "activebackground": "#E0A000",
+        "padx": 10,
+        "pady": 5}
+    tk.Button(button_frame, text="Yes, continue", command=on_yes_confirm, **btn_style).pack(side=tk.RIGHT, padx=10)
+    tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
+    confirm_window.wait_window()
 
 def restore_main_view():
     '''Reseteamos la vista para no superponer unos botones con otros,
@@ -268,6 +326,16 @@ def print_graph_info():
         width=15
     ).pack(side=tk.LEFT, padx=10)
 
+
+def update_flight_planning_button():
+    """Update the flight planning button visibility based on graph type"""
+    for widget in root.winfo_children():
+        if widget.grid_info().get("row", 0) == 8 and widget.grid_info().get("column", 0) == 0:
+            widget.destroy()
+
+    if is_real_map(G):
+        button(lambda: find_best_route(), 'Flight Planning', 8, 0, width=20, pady=10)
+
 def import_map():
     '''Esta función será la encargada de importar todos los gráficos reales que queramos'''
     for widget in root.winfo_children():
@@ -289,6 +357,7 @@ def import_map():
             airspace_instance = airspace
             set_graph(G)
             Plot(G)
+            update_flight_planning_button()
             show_message(f"Successfully loaded {region} map")
             if e_map_name.winfo_exists():
                 e_map_name.delete(0, 'end')
@@ -410,63 +479,6 @@ def show_neighbors():
     )
     search_btn.grid(row=0, column=4)
 
-def create_new_graph():
-    '''Esta función crea un gráfico en blanco'''
-    global edited_G, G, current_display_mode
-    edited_G = Graph()
-    G = edited_G
-    current_display_mode = "edited"
-    restore_main_view()
-    show_message("Created new empty graph")
-
-def confirm_new_graph():
-    """Esta función le recuerda al usuario que de continuar
-     perderá su antiguo gráfico, y le da la opción de hacer lo que él desee"""
-    for widget in root.winfo_children():
-        if isinstance(widget, tk.Toplevel) and widget.title() == "Confirm":
-            widget.destroy()
-    confirm_window = tk.Toplevel(root)
-    confirm_window.title("Confirm")
-    confirm_window.transient(root)
-    confirm_window.grab_set()
-    confirm_window.resizable(False, False)
-    window_width = 460
-    window_height = 180
-    screen_width = confirm_window.winfo_screenwidth()
-    screen_height = confirm_window.winfo_screenheight()
-    x = (screen_width - window_width) // 2
-    y = (screen_height - window_height) // 2
-    confirm_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
-    confirm_window.configure(bg="#FFC400")
-    content_frame = tk.Frame(confirm_window, bg="#FFC400")
-    content_frame.pack(padx=20, pady=15, fill="both", expand=True)
-    warning_icon = tk.Label(content_frame, text="⚠️", font=("Arial", 18), bg="#FFC400", fg="#172B4D")
-    warning_icon.grid(row=0, column=0, rowspan=2, sticky="n")
-    header = tk.Label(content_frame, text="Are you sure you want to create a new graph?",
-                      font=("Arial", 12, "bold"), bg="#FFC400", fg="#172B4D", anchor="w", justify="left")
-    header.grid(row=0, column=1, sticky="w", padx=(10, 0), pady=(0, 5))
-    message = tk.Label(content_frame,
-                       text="All unsaved changes will be lost.\nWe recommend saving your previous graph first.",
-                       font=("Arial", 10), bg="#FFC400", fg="#172B4D", justify="left", anchor="w")
-    message.grid(row=1, column=1, sticky="w", padx=(10, 0))
-    button_frame = tk.Frame(confirm_window, bg="#FFC400")
-    button_frame.pack(pady=5)
-
-    def on_yes_confirm():
-        '''Confirma que está dispuesto a continuar con la creación de un nuevo gráfico'''
-        confirm_window.destroy()
-        create_new_graph()
-    btn_style = {
-        "bg": "#F1B300",
-        "fg": "#172B4D",
-        "font": ("Arial", 10, "bold"),
-        "relief": tk.FLAT,
-        "activebackground": "#E0A000",
-        "padx": 10,
-        "pady": 5}
-    tk.Button(button_frame, text="Yes, continue", command=on_yes_confirm, **btn_style).pack(side=tk.RIGHT, padx=10)
-    tk.Button(button_frame, text="No, cancel", command=confirm_window.destroy, **btn_style).pack(side=tk.LEFT, padx=10)
-    confirm_window.wait_window()
 
 def find_best_route():
     '''Esta función permitirá escoger una ruta aérea entre dos aeropuertos
@@ -474,6 +486,108 @@ def find_best_route():
     for widget in root.winfo_children():
         if widget.grid_info().get("column", 0) in [2, 3, 4]:
             widget.destroy()
+
+        show_message("This feature is only available for real maps", is_error=True)
+        return
+    tk.Label(root, text="Departure Airport:").grid(row=0, column=2)
+    departure_var = tk.StringVar(root)
+    departure_var.set("Select Airport")
+    departure_menu = tk.OptionMenu(root, departure_var, *sorted(G.nav_airports))
+    departure_menu.grid(row=0, column=3)
+    tk.Label(root, text="Departure Waypoint (SID):").grid(row=1, column=2)
+    sid_var = tk.StringVar(root)
+    sid_var.set("Select SID")
+    sid_menu = tk.OptionMenu(root, sid_var, "")
+    sid_menu.grid(row=1, column=3)
+
+    def update_sid_options(*args):
+        '''Actualiza las opciones SID'''
+        selected_airport = departure_var.get()
+        if selected_airport in G.airport_data:
+            airport = G.airport_data[selected_airport]
+            menu = sid_menu['menu']
+            menu.delete(0, 'end')
+            for waypoint in sorted(airport.get_departure_points()):
+                menu.add_command(label=waypoint,
+                                command=lambda v=waypoint: sid_var.set(v))
+            sid_var.set("Select SID" if airport.get_departure_points() else "No SIDs available")
+    departure_var.trace('w', update_sid_options)
+    tk.Label(root, text="Arrival Airport:").grid(row=2, column=2)
+    arrival_var = tk.StringVar(root)
+    arrival_var.set("Select Airport")
+    arrival_menu = tk.OptionMenu(root, arrival_var, *sorted(G.nav_airports))
+    arrival_menu.grid(row=2, column=3)
+    tk.Label(root, text="Arrival Waypoint (STAR):").grid(row=3, column=2)
+    star_var = tk.StringVar(root)
+    star_var.set("Select STAR")
+    star_menu = tk.OptionMenu(root, star_var, "")
+    star_menu.grid(row=3, column=3)
+
+    def update_star_options(*args):
+        '''Escoge la opción de aeropuerto'''
+        selected_airport = arrival_var.get()
+        if selected_airport in G.airport_data:
+            airport = G.airport_data[selected_airport]
+            menu = star_menu['menu']
+            menu.delete(0, 'end')
+            for waypoint in sorted(airport.get_arrival_points()):
+                menu.add_command(label=waypoint,
+                               command=lambda v=waypoint: star_var.set(v))
+            star_var.set("Select STAR" if airport.get_arrival_points() else "No STARs available")
+    arrival_var.trace('w', update_star_options)
+    aircraft_types = {
+        "A320": {"speed": 828, "fuel_per_km": 3.77},
+        "B737": {"speed": 850, "fuel_per_km": 3.58},
+        "A380": {"speed": 900, "fuel_per_km": 12.5},
+        "B787": {"speed": 913, "fuel_per_km": 6.7},
+        "C172": {"speed": 230, "fuel_per_km": 0.13}
+    }
+    tk.Label(root, text="Aircraft Type:").grid(row=4, column=2)
+    aircraft_var = tk.StringVar(root)
+    aircraft_var.set("A320")  # default value
+    aircraft_menu = tk.OptionMenu(root, aircraft_var, *sorted(aircraft_types.keys()))
+    aircraft_menu.grid(row=4, column=3)
+
+    def calculate_route():
+        '''Calcula la ruta y muestra la información'''
+        departure = departure_var.get()
+        arrival = arrival_var.get()
+        sid = sid_var.get()
+        star = star_var.get()
+        aircraft = aircraft_var.get()
+        if departure == "Select Airport" or arrival == "Select Airport":
+            show_message("Please select both departure and arrival airports", is_error=True)
+            return
+        if departure == arrival:
+            show_message("Departure and arrival airports must be different", is_error=True)
+            return
+        from_point = sid if sid not in ["Select SID", "No SIDs available"] else departure
+        to_point = star if star not in ["Select STAR", "No STARs available"] else arrival
+        from_node = SimpleNamespace(name=from_point, x=0, y=0)
+        to_node = SimpleNamespace(name=to_point, x=0, y=0)
+        path_data = finding_shortest_path(G, from_node, to_node)
+        if not path_data:
+            show_message(f"No route found between {from_point} and {to_point}", is_error=True)
+            return
+        highlight_path(path_data)
+        distance = path_data['distance']  #
+        aircraft_data = aircraft_types[aircraft]
+        speed = aircraft_data['speed']
+        fuel_per_km = aircraft_data['fuel_per_km']
+        flight_time = distance / speed
+        fuel_needed = distance * fuel_per_km
+        flight_time_str = f"{int(flight_time)}h {int((flight_time % 1) * 60)}m"
+        path_info_text.insert(tk.END, f"Flight Plan Summary:\n")
+        path_info_text.insert(tk.END, f"From: {departure} ({from_point}) - To: {arrival} ({to_point})\n")
+        path_info_text.insert(tk.END, f"Aircraft type: {aircraft} - Distance: {distance:.1f} km\n")
+        path_info_text.insert(tk.END, f"Estimated Time: {flight_time_str} - Fuel Needed: {fuel_needed:.1f} L - "
+                                      f"Route: {' → '.join(path_data['path'])}\n")
+    tk.Button(
+        root,
+        text="Calculate Route",
+        command=calculate_route,
+        cursor='hand2'
+    ).grid(row=5, column=3)
 
 
 def export_to_kml(graph, show_all=False):
@@ -698,16 +812,17 @@ def export_to_kml(graph, show_all=False):
     except Exception as e:
         show_message(f"Error saving file: {str(e)}", is_error=True)
 
-button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: confirm_new_graph(), "Crete new graph", 2, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=10)#, master=plotting_frame)
-button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)#, master=plotting_frame)
-button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)#, master=plotting_frame)
+button(lambda: show_graph(), "Show original graph", 0, 0, width=20,pady=10)
+button(lambda: show_graph_1(), "Show edited graph", 1, 0, width=20,pady=10)
+button(lambda: confirm_new_graph(), "Create new graph", 2, 0, width=20,pady=10)
+button(lambda: print_graph_info(), "Save the information", 3, 0, width=20,pady=10)
+button(lambda: [func() for func in (show_paths, find_closest_path_entries)], "Analyze paths", 4, 0, width=20,pady=10)
+button(show_neighbors, "Show node neighbors", 5, 0, width=20,pady=10)
 button(lambda: import_map(), 'Import a real map', 6, 0, width=20,pady=10)
 button(lambda: export_to_kml(G), "Export to KML", 7, 0, width=20, pady=10)
 if is_real_map(G):
-    button(lambda: find_best_route(), 'Find the best route', 8, 0, width=20, pady=10)
+    button(lambda: find_best_route(), 'Flight Planning', 8, 0, width=20, pady=10)
+
 
 
 def Entries():
